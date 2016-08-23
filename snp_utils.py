@@ -93,6 +93,7 @@ def write_outputs(args, snp_filter, masked_filter, no_snps):
                 f.write(s)
                 f.write('\n')
 
+
 #   Run the program
 def main():
     """Find SNP positions"""
