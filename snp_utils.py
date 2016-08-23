@@ -87,7 +87,7 @@ def write_outputs(args, snp_filter, masked_filter, no_snps):
                 m.write(s.format_vcf())
                 m.write('\n')
     if len(no_snps) > 0:
-        print("Failed to find", len(no_snps), "SNPs", file=sys.stderr)
+        print("Writing", len(no_snps), "failed SNPs to", failedfile, file=sys.stderr)
         with open(failedfile, 'w') as f:
             for s in no_snps:
                 f.write(s)
