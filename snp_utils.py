@@ -74,7 +74,7 @@ def write_outputs(args, snp_filter, masked_filter, no_snps):
     if len(snp_list) < 1:
         print("Failed to find any SNPs", file=sys.stderr)
     else:
-        print("Writing output to", outfile, file=sys.stderr)
+        print("Writing", len(snp_list), "SNPs to", outfile, file=sys.stderr)
         with open(outfile, 'w') as o:
             for s in snp_list:
                 o.write(s.format_vcf())
