@@ -89,7 +89,7 @@ def write_outputs(args, snp_filter, masked_filter, no_snps):
     if len(no_snps) > 0:
         print("Failed to find", len(no_snps), "SNPs", file=sys.stderr)
         with open(failedfile, 'w') as f:
-            for s in failedfile:
+            for s in no_snps:
                 f.write(s)
                 f.write('\n')
 

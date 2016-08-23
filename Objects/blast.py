@@ -57,7 +57,6 @@ class Hit(object):
         self._end = hend
         self._hstrand = hstrand
         self._snp_pos = None
-        print(self._name, self._start, self._hstrand, self.get_rc(), sep = '\t', file=sys.stderr)
 
     def __repr__(self):
         return self._name + ":" + str(self._evalue)
