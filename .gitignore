@@ -1,0 +1,28 @@
+# Ignore INI files
+##################
+*.ini
+
+# Ignore VCF files
+##################
+*.vcf
+
+# Ignore XML files
+##################
+*.xml
+
+# Ignore FASTA files
+####################
+*.fasta
+*.fa
+
+# Ignore log files
+##################
+*.log
+
+# Ignore __pycache__/
+#####################
+__pycache__/
+
+# Ignore .vscode/
+#################
+.vscode/
