@@ -60,13 +60,17 @@ def blast_based(args, lookup_dict):
 
 
 #   Write the output files
-def write_outputs(args, snp_filter, masked_filter, no_snps):
+def write_outputs(args, snp_filter, masked_filter, no_snps, method):
     """Write the output files"""
     try:
+        assert isinstance(args, dict)
         assert isinstance(snp_filter, filter)
         assert isinstance(masked_filter, filter)
+        assert isinstance(no_snps, list)
+        assert isinstance(method, str)
     except AssertionError:
         raise
+    header = '##fileformat=VCFv4.2\n##INFO<ID=s,Number=1,Type=Flag,Description="Variant is calculated from %s">\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n' % method
     outfile = args['outname'] + '.vcf'
     maskedfile = args['outname'] + '_masked.vcf'
     failedfile = args['outname'] + '_failed.log'
@@ -76,6 +80,7 @@ def write_outputs(args, snp_filter, masked_filter, no_snps):
     else:
         print("Writing", len(snp_list), "SNPs to", outfile, file=sys.stderr)
         with open(outfile, 'w') as o:
+            o.write(header)
             for s in snp_list:
                 o.write(s.format_vcf())
                 o.write('\n')
@@ -83,6 +88,7 @@ def write_outputs(args, snp_filter, masked_filter, no_snps):
     if len(masked_list) > 0:
         print("Writing", len(masked_list), "masked SNPs to", maskedfile, file=sys.stderr)
         with open(maskedfile, 'w') as m:
+            m.write(header)
             for s in masked_list:
                 m.write(s.format_vcf())
                 m.write('\n')
@@ -111,12 +117,14 @@ def main():
                 l = snp.Lookup(split[0], split[1])
                 lookup_dict[l.get_snpid()] = l
         if args['method'] == 'BLAST':
+            method = 'BLAST'
             snp_list, no_snps = blast_based(args, lookup_dict)
         elif args['method'] == 'SAM':
+            method = 'SAM'
             raise NotImplementedError("Finding SNPs using a SAM file is not yet implemented")
         masked = filter(lambda s: s.check_masked(), snp_list)
         proper_snps = filter(lambda s: not s.check_masked(), snp_list)
-        write_outputs(args, proper_snps, masked, no_snps)
+        write_outputs(args, proper_snps, masked, no_snps, method)
 
 
 if __name__ == '__main__':
