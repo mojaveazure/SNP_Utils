@@ -140,6 +140,9 @@ class SNP(object):
             raise
         self._reference = hit.get_subject_allele() # Get the reference allele from the Hit
         self._alternate = lookup.get_alternate(self._reference) # Get the alternate from the Lookup
+        if hit.get_rc():
+            self._reference = self.reverse_complement(self._reference)
+            self._alternate = self.reverse_complement(self._alternate)
 
     def check_masked(self):
         """Check to see if our alternate allele is masked"""
