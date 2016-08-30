@@ -6,6 +6,7 @@ if sys.version_info.major is not 3:
     sys.exit("Please use Python 3 for this script")
 
 from Utilities import arguments
+from Utilities import utilities
 from Objects import snp
 from Objects import blast
 from Objects.blast import NoSNPError
@@ -27,34 +28,47 @@ def blast_based(args, lookup_dict):
         assert isinstance(lookup_dict, dict)
     except AssertionError:
         raise
+    #   If we weren't provided a BLAST XML file
     if not args['xml']:
+        #   Run BLASTn
         print("Running BLAST", file=sys.stderr)
+        #   Configure BLAST
         bconf = configure.parse_config(args['config'])
+        #   Make our FASTA file
         bconf['query'] = runblastn.write_fasta(lookup_dict, args['lookup'])
+        #   Run BLAST
         blast_out = runblastn.run_blastn(bconf)
+        #   Open the XML file
         blast_xml = open(blast_out, 'r')
     else:
+        #   Read the XML file provided
         print("Loading BLAST XML file", file=sys.stderr)
         blast_xml = args['xml']
     try:
+        #   Make soup out of the XML
         blast_soup = BeautifulSoup(blast_xml, 'xml')
     except FeatureNotFound:
         sys.exit("Please install 'lxml' to properly parse the BLAST results")
-    iteration_dictionary = {}
-    no_hit = []
-    snp_list = []
+    iteration_dictionary = {} # Holds iterations stored by SNP ID
+    no_hit = [] # List of SNP IDs
+    snp_list = [] # List of snp.SNPs
+    #   For every query in our BLAST soup
     for query in blast_soup.findAll('Iteration'):
-        iteration = blast.SNPIteration(query)
-        iteration_dictionary[iteration.get_snpid()] = iteration
+        iteration = blast.SNPIteration(query) # Make an iteration
+        iteration_dictionary[iteration.get_snpid()] = iteration # Add to our dictionary
+    #   For every SNP in our lookup table
     for snpid, l in lookup_dict.items():
-        if snpid in iteration_dictionary:
-            try:
-                snps, fail = iteration_dictionary[snpid].hit_snps(l)
-                snp_list += snps
-                no_hit += fail
-            except NoSNPError:
-                print("No hit found for", snpid, file=sys.stderr)
-                no_hit.append(l.get_snpid())
+        try:
+            if snpid in iteration_dictionary: # If the SNP was found in BLAST
+                snps, fail = iteration_dictionary[snpid].hit_snps(l) # Get SNPs and failures for every hit for this iteration
+                snp_list += snps # Add to our list of SNPs
+                no_hit += fail # Add to our list of failures
+            else:
+                raise NoSNPError
+        except NoSNPError:
+            print("No hit found for", snpid, file=sys.stderr)
+            no_hit.append(snpid)
+    #   Close the XML file
     blast_xml.close()
     return(snp_list, no_hit)
 
@@ -84,7 +98,8 @@ def write_outputs(args, snp_filter, masked_filter, no_snps, method):
             for s in snp_list:
                 o.write(s.format_vcf())
                 o.write('\n')
-    masked_list = list(masked_filter)
+    # masked_list = list(masked_filter)
+    masked_list = utilities.deduplicate_list(list(masked_filter), snp_list)
     if len(masked_list) > 0:
         print("Writing", len(masked_list), "masked SNPs to", maskedfile, file=sys.stderr)
         with open(maskedfile, 'w') as m:
@@ -92,10 +107,11 @@ def write_outputs(args, snp_filter, masked_filter, no_snps, method):
             for s in masked_list:
                 m.write(s.format_vcf())
                 m.write('\n')
-    if len(no_snps) > 0:
-        print("Writing", len(no_snps), "failed SNPs to", failedfile, file=sys.stderr)
+    no_snps_deduped = utilities.deduplicate_list(no_snps, [s.get_snpid() for s in snp_list])
+    if len(no_snps_deduped) > 0:
+        print("Writing", len(no_snps_deduped), "failed SNPs to", failedfile, file=sys.stderr)
         with open(failedfile, 'w') as f:
-            for s in no_snps:
+            for s in no_snps_deduped:
                 f.write(s)
                 f.write('\n')
 

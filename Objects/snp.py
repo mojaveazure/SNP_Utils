@@ -198,6 +198,22 @@ class Lookup(object):
     def __repr__(self):
         return self._snpid + ':' + self._code
 
+    def __eq__(self, other):
+        try:
+            if isinstance(other, SNP):
+                return self._snpid == other.get_snpid() and self._code == other.get_code()
+            elif isinstance(other, str):
+                if len(other) is 1:
+                    return self._code == other.upper()
+                elif len(other) > 1:
+                    return self._snpid == other.upper()
+                else:
+                    raise NotImplementedError
+            else:
+                raise NotImplementedError
+        except NotImplementedError:
+            raise
+
     def _capture_snp(self):
         """Capture the SNP and it's position from the start and end of the sequence"""
         #   Get the forward position
