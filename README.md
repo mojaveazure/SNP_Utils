@@ -14,6 +14,9 @@ To get help, utilize the wonderful `-h` option!
 ./snp_utils.py -h
 ```
 
+## Note
+You **must** configure BLAST before running the `BLAST` option. Use `./snp_utils.py CONFIG -h` to get all options for configuration
+
 ## Lookup Tables
 
 The lookup table is a two-column table that has a SNP ID and contextual sequence in Illumina format (sequence with SNP as `[A/B]` where `A` and `B` are the two states for the SNP). The two columns are *tab*-delimited
