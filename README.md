@@ -13,3 +13,13 @@ To get help, utilize the wonderful `-h` option!
 ```python
 ./snp_utils.py -h
 ```
+
+## Lookup Tables
+
+The lookup table is a two-column table that has a SNP ID and contextual sequence in Illumina format (sequence with SNP as `[A/B]` where `A` and `B` are the two states for the SNP). The two columns are *tab*-delimited
+
+Example
+
+```
+SNP_1   ACGTCACGATCGA[A/G]ACGTATGCGAAGTTCGCC
+```
