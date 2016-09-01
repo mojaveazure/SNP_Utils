@@ -9,6 +9,7 @@ from Utilities import arguments
 from Utilities import utilities
 from Objects import snp
 from Objects import blast
+from Objects.snp import NotABaseError
 from Objects.blast import NoSNPError
 from BLAST import runblastn
 from BLAST import configure
@@ -67,6 +68,9 @@ def blast_based(args, lookup_dict):
                 raise NoSNPError
         except NoSNPError:
             print("No hit found for", snpid, file=sys.stderr)
+            no_hit.append(snpid)
+        except NotABaseError:
+            print("Something happened with", snpid, file=sys.stderr)
             no_hit.append(snpid)
     #   Close the XML file
     blast_xml.close()

@@ -115,9 +115,16 @@ class Hit(object):
     @overload
     def get_subject_allele(self):
         """Get the reference allele if the SNP has been found"""
-        if self._snp_pos is None:
+        try:
+            assert self._snp_pos is not None
+            ref = self._subject[self._snp_pos]
+            assert ref.upper() in 'ACGTN'
+            return ref
+        except AssertionError:
             raise NoSNPError
-        return self._subject[self._snp_pos]
+        # if self._snp_pos is None:
+        #     raise NoSNPError
+        # return self._subject[self._snp_pos]
 
     @get_subject_allele.add
     def get_subject_allele(self, query_snp, expected):

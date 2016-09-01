@@ -8,6 +8,7 @@ if sys.version_info.major is not 3:
 import re
 from . alignment import Alignment
 from . import blast
+from . blast import NoSNPError
 
 try:
     from overload import overload
@@ -41,8 +42,8 @@ class SNP(object):
         try:
             assert isinstance(base, str)
             assert len(base) is 1
-            assert base in 'ACGTacgt'
-            rc = str.maketrans('ACGTacgt', 'TGCAtgca')
+            assert base in 'ACGTNacgtn'
+            rc = str.maketrans('ACGTNacgtn', 'TGCANtgcan')
             return base.translate(rc)
         except AssertionError:
             raise NotABaseError
@@ -136,13 +137,25 @@ class SNP(object):
         try:
             assert isinstance(lookup, Lookup)
             assert isinstance(hit, blast.Hit)
+            print("Finding SNP for", lookup.get_snpid(), file=sys.stderr)
+            self._reference = hit.get_subject_allele() # Get the reference allele from the Hit
+            self._alternate = lookup.get_alternate(self._reference) # Get the alternate from the Lookup
+            print("Reference", self._reference, file=sys.stderr)
+            print("Alternate", self._alternate, file=sys.stderr)
+            if hit.get_rc():
+                print("RC", file=sys.stderr)
+                self._reference = self.reverse_complement(self._reference)
+                self._alternate = self.reverse_complement(self._alternate)
         except AssertionError:
             raise
-        self._reference = hit.get_subject_allele() # Get the reference allele from the Hit
-        self._alternate = lookup.get_alternate(self._reference) # Get the alternate from the Lookup
-        if hit.get_rc():
-            self._reference = self.reverse_complement(self._reference)
-            self._alternate = self.reverse_complement(self._alternate)
+        except NoSNPError:
+            raise
+        except NotABaseError:
+            raise
+
+    def get_snpid(self):
+        """Get the SNP ID"""
+        return self._snpid
 
     def check_masked(self):
         """Check to see if our alternate allele is masked"""
