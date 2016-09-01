@@ -102,7 +102,7 @@ def write_outputs(args, snp_filter, masked_filter, no_snps, method):
             for s in snp_list:
                 o.write(s.format_vcf())
                 o.write('\n')
-    # masked_list = list(masked_filter)
+    print("Removing masked SNPs that were actually found", file=sys.stderr)
     masked_list = utilities.deduplicate_list(list(masked_filter), snp_list)
     if len(masked_list) > 0:
         print("Writing", len(masked_list), "masked SNPs to", maskedfile, file=sys.stderr)
@@ -111,6 +111,7 @@ def write_outputs(args, snp_filter, masked_filter, no_snps, method):
             for s in masked_list:
                 m.write(s.format_vcf())
                 m.write('\n')
+    print("Removing failed SNPs that were actually found", file=sys.stderr)
     no_snps_deduped = utilities.deduplicate_list(no_snps, [s.get_snpid() for s in snp_list])
     if len(no_snps_deduped) > 0:
         print("Writing", len(no_snps_deduped), "failed SNPs to", failedfile, file=sys.stderr)
