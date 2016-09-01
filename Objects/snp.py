@@ -137,11 +137,8 @@ class SNP(object):
         try:
             assert isinstance(lookup, Lookup)
             assert isinstance(hit, blast.Hit)
-            print("Finding SNP for", lookup.get_snpid(), file=sys.stderr)
             self._reference = hit.get_subject_allele() # Get the reference allele from the Hit
             self._alternate = lookup.get_alternate(self._reference) # Get the alternate from the Lookup
-            print("Reference", self._reference, file=sys.stderr)
-            print("Alternate", self._alternate, file=sys.stderr)
             if hit.get_rc():
                 print("RC", file=sys.stderr)
                 self._reference = self.reverse_complement(self._reference)
