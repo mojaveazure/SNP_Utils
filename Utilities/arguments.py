@@ -106,15 +106,24 @@ def make_argument_parser():
     )
     #   Config subparser
     config = subparsers.add_parser('CONFIG')
-    config.add_argument(
+    ref_db = config.add_mutually_exclusive_group(required=True)
+    ref_db.add_argument(
         '-r',
         '--reference',
         dest='subject',
         type=str,
         default=None,
-        required=True,
         metavar='REFERNCE SEQUENCE',
-        help="Reference sequence in FASTA format"
+        help="Reference sequence in FASTA format, incompatible with '-d | --database'"
+    )
+    ref_db.add_argument(
+        '-d',
+        '--database',
+        dest='database',
+        type=str,
+        default=None,
+        metavar='REFERENCE DATABASE',
+        help="Reference BLAST nucleotide database, incompatible with '-r | --reference'"
     )
     config.add_argument(
         '-e',

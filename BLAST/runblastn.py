@@ -5,6 +5,7 @@ if sys.version_info.major is not 3:
     sys.exit("Please use Python 3 for this module: " + __name__)
 
 import os
+import re
 
 from Objects import snp
 
@@ -20,8 +21,46 @@ class BLASTFailedError(Exception):
     """BLAST seems to have failed..."""
 
 
+#   Another custom error
+class MalformedConfigError(Exception):
+    """The BLAST config file isn't formed correctly"""
+
+
+#   Ensure we have our BLAST database
+def validate_db(db_name):
+    """Find a BLAST nucleotide database"""
+    try:
+        assert isinstance(db_name, str)
+    except AssertionError:
+        raise
+    nhr = re.compile(r'(%s\.[0-9\.]*nhr)' % db_name).search
+    nin = re.compile(r'(%s\.[0-9\.]*nin)' % db_name).search
+    nsq = re.compile(r'(%s\.[0-9\.]*nsq)' % db_name).search
+    nal = re.compile(r'(%s\.*nal)' % db_name).search
+    db_directory = os.path.dirname(db_name)
+    db_contents = '\n'.join(os.listdir(db_directory))
+    if not nhr(db_contents) and not nin(db_contents) and not nsq(db_contents) and not nal(db_contents):
+        raise FileNotFoundError("Failed to find the BLAST nucleotide database")
+
+
 #   A function to run BLASTn
 @overload
+def run_blastn(cline, keep_query=True):
+    """Run BLASTn"""
+    try:
+        assert isinstance(cline, NcbiblastnCommandline)
+        assert isinstance(keep_query, bool)
+    except AssertionError:
+        raise
+    print(cline, file=sys.stderr)
+    cline()
+    if not os.path.exists(cline.out):
+        raise BLASTFailedError
+    if not keep_query:
+        os.remove(cline.query)
+
+
+@run_blastn.add
 def run_blastn(query, subject, evalue, max_seqs, max_hsps, keep_query):
     """Run BLASTn"""
     try:
@@ -35,8 +74,8 @@ def run_blastn(query, subject, evalue, max_seqs, max_hsps, keep_query):
         raise
     #   Create an output name
     query_base = os.path.basename(os.path.splitext(query)[0])
-    subject_base = os.path.basename(os.path.splitext(subject)[0])
-    blast_out = os.getcwd() + '/' + query_base + '_' + subject_base + '_BLAST.xml'
+    db_base = os.path.basename(os.path.splitext(subject)[0])
+    blast_out = os.getcwd() + '/' + query_base + '_' + db_base + '_BLAST.xml'
     #   Setup BLASTn
     blastn = NcbiblastnCommandline(
         query=query,
@@ -48,13 +87,40 @@ def run_blastn(query, subject, evalue, max_seqs, max_hsps, keep_query):
         out=blast_out
     )
     #   Run BLASTn
-    print(blastn, file=sys.stderr)
-    blastn()
-    if not os.path.exists(blast_out):
-        raise BLASTFailedError
-    if not keep_query:
-        os.remove(query)
+    run_blastn(cline=blastn, keep_query=keep_query)
     return blast_out
+
+
+@run_blastn.add
+def run_blastn(query, database, evalue, max_seqs, max_hsps, keep_query):
+    """Run BLASTn"""
+    try:
+        assert isinstance(query, str)
+        assert isinstance(database, str)
+        assert isinstance(evalue, float)
+        assert isinstance(max_seqs, int)
+        assert isinstance(max_hsps, int)
+        assert isinstance(keep_query, bool)
+    except AssertionError:
+        raise
+    #   Create an output name
+    query_base = os.path.basename(os.path.splitext(query)[0])
+    db_base = os.path.basename(os.path.splitext(database)[0])
+    blast_out = os.getcwd() + '/' + query_base + '_' + db_base + '_BLAST.xml'
+    #   Setup BLASTn
+    blastn = NcbiblastnCommandline(
+        query=query,
+        db=database,
+        evalue=evalue,
+        outfmt=5,
+        max_target_seqs=max_seqs,
+        max_hsps=max_hsps,
+        out=blast_out
+    )
+    #   Run BLASTn
+    run_blastn(cline=blastn, keep_query=keep_query)
+    return blast_out
+
 
 @run_blastn.add
 def run_blastn(bconf):
@@ -62,24 +128,43 @@ def run_blastn(bconf):
     try:
         assert isinstance(bconf, dict)
         query = bconf['query']
-        subject = bconf['subject']
         evalue = bconf['evalue']
         max_seqs = bconf['max_seqs']
         max_hsps = bconf['max_hsps']
         keep_query = bconf['keep_query']
-        blast_out = run_blastn(
-            query=query,
-            subject=subject,
-            evalue=evalue,
-            max_seqs=max_seqs,
-            max_hsps=max_hsps,
-            keep_query=keep_query
-        )
-        return blast_out
     except AssertionError:
         raise
-    except KeyError as error:
-        sys.exit("Malformed BLAST config! Missing entry: " + str(error.args))
+    except KeyError:
+        raise MalformedConfigError
+    try:
+        if bconf['database']:
+            database = bconf['database']
+            validate_db(database)
+            blast_out = run_blastn(
+                query=query,
+                database=database,
+                evalue=evalue,
+                max_seqs=max_seqs,
+                max_hsps=max_hsps,
+                keep_query=keep_query
+            )
+        elif bconf['subject']:
+            subject = bconf['subject']
+            blast_out = run_blastn(
+                query=query,
+                subject=subject,
+                evalue=evalue,
+                max_seqs=max_seqs,
+                max_hsps=max_hsps,
+                keep_query=keep_query
+            )
+        else:
+            raise MalformedConfigError
+    except KeyError:
+        pass
+    except FileNotFoundError:
+        raise
+    return blast_out
 
 
 #   A function to write a FASTA file from a lookup dictionary

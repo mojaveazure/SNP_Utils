@@ -9,6 +9,7 @@ import configparser
 SECTION_NAME = "BLAST_SETTINGS"
 CONFIG_VALUES = {
     'subject' : 'str',
+    'database' : 'str',
     'evalue' : 'float',
     'max_seqs' : 'int',
     'max_hsps' : 'int',
@@ -21,7 +22,10 @@ def make_config(args):
     config = configparser.ConfigParser()
     config.add_section(SECTION_NAME)
     for option in CONFIG_VALUES:
-        config.set(SECTION_NAME, option, str(args[option]))
+        try:
+            config.set(SECTION_NAME, option, str(args[option]))
+        except KeyError:
+            continue
     with open(args['outfile'], 'w') as configfile:
         config.write(configfile)
     print("Config file can be found at", args['outfile'], file=sys.stderr)
@@ -38,12 +42,15 @@ def parse_config(config_file):
         sys.exit("Failed to find " + error.filename)
     bconf = {}
     for option, opt_type in CONFIG_VALUES.items():
-        if opt_type == 'int':
-            bconf[option] = config.getint(SECTION_NAME, option)
-        elif opt_type == 'float':
-            bconf[option] = config.getfloat(SECTION_NAME, option)
-        elif opt_type == 'bool':
-            bconf[option] = config.getboolean(SECTION_NAME, option)
-        else:
-            bconf[option] = config.get(SECTION_NAME, option)
+        try:
+            if opt_type == 'int':
+                bconf[option] = config.getint(SECTION_NAME, option)
+            elif opt_type == 'float':
+                bconf[option] = config.getfloat(SECTION_NAME, option)
+            elif opt_type == 'bool':
+                bconf[option] = config.getboolean(SECTION_NAME, option)
+            else:
+                bconf[option] = config.get(SECTION_NAME, option)
+        except configparser.NoOptionError:
+            continue
     return bconf
