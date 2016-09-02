@@ -95,6 +95,18 @@ class SNP(object):
     def __repr__(self):
         return self._snpid
 
+    def __eq__(self, other):
+        if isinstance(other, SNP):
+            return self._snpid == other._snpid and self._contig == other._contig
+        elif isinstance(other, Lookup):
+            return self._snpid == other._snpid and self._alternate == other.get_alternate(self._reference) and self._alternate != 'N'
+        elif isinstance(other, str):
+            return self._snpid == other
+        elif isinstance(other, int):
+            return self._position == other
+        else:
+            raise NotImplementedError("Cannot compare type SNP to " + type(other))
+
     def _calculate_position(self, lookup, alignment):
         """Calculate the position of the SNP in the reference sequence"""
         index = 0 # Index of our split CIGAR string
@@ -212,7 +224,7 @@ class Lookup(object):
 
     def __eq__(self, other):
         try:
-            if isinstance(other, SNP):
+            if isinstance(other, Lookup):
                 return self._snpid == other.get_snpid() and self._code == other.get_code()
             elif isinstance(other, str):
                 if len(other) is 1:
