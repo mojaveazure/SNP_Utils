@@ -97,7 +97,7 @@ class SNP(object):
 
     def __eq__(self, other):
         if isinstance(other, SNP):
-            return self._snpid == other._snpid and self._contig == other._contig
+            return self._snpid == other._snpid
         elif isinstance(other, Lookup):
             return self._snpid == other._snpid and self._alternate == other.get_alternate(self._reference) and self._alternate != 'N'
         elif isinstance(other, str):
@@ -106,6 +106,12 @@ class SNP(object):
             return self._position == other
         else:
             raise NotImplementedError("Cannot compare type SNP to " + type(other))
+
+    def __hash__(self):
+        get_num = re.compile(r'([0-9]+)').findall
+        num_list = get_num(self._contig)
+        nums = ''.join(num_list)
+        return int(nums)
 
     def _calculate_position(self, lookup, alignment):
         """Calculate the position of the SNP in the reference sequence"""
@@ -288,6 +294,7 @@ class Lookup(object):
             return 'N'
 
     def format_fasta(self):
+        """Return this lookup in FASTA format"""
         fasta = [
             '>' + self._snpid,
             self._iupac
