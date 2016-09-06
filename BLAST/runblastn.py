@@ -73,6 +73,7 @@ def run_blastn(query, subject, evalue, max_seqs, max_hsps, keep_query):
     except AssertionError:
         raise
     #   Create an output name
+    print("Running BLAST against subject:", subject, file=sys.stderr)
     query_base = os.path.basename(os.path.splitext(query)[0])
     db_base = os.path.basename(os.path.splitext(subject)[0])
     blast_out = os.getcwd() + '/' + query_base + '_' + db_base + '_BLAST.xml'
@@ -104,6 +105,7 @@ def run_blastn(query, database, evalue, max_seqs, max_hsps, keep_query):
     except AssertionError:
         raise
     #   Create an output name
+    print("Running BLAST with database:", database, file=sys.stderr)
     query_base = os.path.basename(os.path.splitext(query)[0])
     db_base = os.path.basename(os.path.splitext(database)[0])
     blast_out = os.getcwd() + '/' + query_base + '_' + db_base + '_BLAST.xml'
@@ -137,7 +139,7 @@ def run_blastn(bconf):
     except KeyError:
         raise MalformedConfigError
     try:
-        if bconf['database']:
+        if 'database' in bconf.keys():
             database = bconf['database']
             validate_db(database)
             blast_out = run_blastn(
@@ -148,7 +150,7 @@ def run_blastn(bconf):
                 max_hsps=max_hsps,
                 keep_query=keep_query
             )
-        elif bconf['subject']:
+        elif 'subject' in bconf.keys():
             subject = bconf['subject']
             blast_out = run_blastn(
                 query=query,
@@ -160,11 +162,9 @@ def run_blastn(bconf):
             )
         else:
             raise MalformedConfigError
-    except KeyError:
-        pass
+        return blast_out
     except FileNotFoundError:
         raise
-    return blast_out
 
 
 #   A function to write a FASTA file from a lookup dictionary

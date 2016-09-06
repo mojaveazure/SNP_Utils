@@ -38,7 +38,7 @@ def blast_based(args, lookup_dict):
         #   Make our FASTA file
         bconf['query'] = runblastn.write_fasta(lookup_dict, args['lookup'])
         #   Run BLAST
-        blast_out = runblastn.run_blastn(bconf)
+        blast_out = runblastn.run_blastn(bconf=bconf)
         #   Open the XML file
         blast_xml = open(blast_out, 'r')
     else:
