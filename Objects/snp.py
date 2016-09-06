@@ -109,12 +109,13 @@ class SNP(object):
             raise NotImplementedError("Cannot compare type SNP to " + type(other))
 
     def __hash__(self):
-        get_num = re.compile(r'([0-9]+)').findall
-        num_list = get_num(self._snpid)
-        nums = ''.join(num_list)
-        if nums == '':
-            raise ValueError("Invalid SNP ID: " + self._snpid)
-        return int(nums)
+        # get_num = re.compile(r'([0-9]+)').findall
+        # num_list = get_num(self._snpid)
+        # nums = ''.join(num_list)
+        # if nums == '':
+        #     raise ValueError("Invalid SNP ID: " + self._snpid)
+        # return int(nums)
+        return hash(self._snpid)
 
     def _calculate_position(self, lookup, alignment):
         """Calculate the position of the SNP in the reference sequence"""
