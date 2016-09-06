@@ -6,6 +6,7 @@ if sys.version_info.major is not 3:
     sys.exit("Please install Python 3 for this module: " + __name__)
 
 import re
+
 from . alignment import Alignment
 from . import blast
 from . blast import NoSNPError
@@ -109,8 +110,10 @@ class SNP(object):
 
     def __hash__(self):
         get_num = re.compile(r'([0-9]+)').findall
-        num_list = get_num(self._contig)
+        num_list = get_num(self._snpid)
         nums = ''.join(num_list)
+        if nums == '':
+            raise ValueError("Invalid SNP ID: " + self._snpid)
         return int(nums)
 
     def _calculate_position(self, lookup, alignment):
