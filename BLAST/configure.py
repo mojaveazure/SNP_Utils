@@ -13,6 +13,7 @@ CONFIG_VALUES = {
     'evalue' : 'float',
     'max_seqs' : 'int',
     'max_hsps' : 'int',
+    'identity' : 'int',
     'keep_query' : 'bool'
 }
 

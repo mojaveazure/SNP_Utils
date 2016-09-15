@@ -61,7 +61,7 @@ def run_blastn(cline, keep_query=True):
 
 
 @run_blastn.add
-def run_blastn(query, subject, evalue, max_seqs, max_hsps, keep_query):
+def run_blastn(query, subject, evalue, max_seqs, max_hsps, identity, keep_query):
     """Run BLASTn"""
     try:
         assert isinstance(query, str)
@@ -69,6 +69,7 @@ def run_blastn(query, subject, evalue, max_seqs, max_hsps, keep_query):
         assert isinstance(evalue, float)
         assert isinstance(max_seqs, int)
         assert isinstance(max_hsps, int)
+        assert isinstance(identity, int)
         assert isinstance(keep_query, bool)
     except AssertionError:
         raise
@@ -85,6 +86,7 @@ def run_blastn(query, subject, evalue, max_seqs, max_hsps, keep_query):
         outfmt=5,
         max_target_seqs=max_seqs,
         max_hsps=max_hsps,
+        perc_identity=identity,
         out=blast_out
     )
     #   Run BLASTn
@@ -93,7 +95,7 @@ def run_blastn(query, subject, evalue, max_seqs, max_hsps, keep_query):
 
 
 @run_blastn.add
-def run_blastn(query, database, evalue, max_seqs, max_hsps, keep_query):
+def run_blastn(query, database, evalue, max_seqs, max_hsps, identity, keep_query):
     """Run BLASTn"""
     try:
         assert isinstance(query, str)
@@ -101,6 +103,7 @@ def run_blastn(query, database, evalue, max_seqs, max_hsps, keep_query):
         assert isinstance(evalue, float)
         assert isinstance(max_seqs, int)
         assert isinstance(max_hsps, int)
+        assert isinstance(identity, int)
         assert isinstance(keep_query, bool)
     except AssertionError:
         raise
@@ -117,6 +120,7 @@ def run_blastn(query, database, evalue, max_seqs, max_hsps, keep_query):
         outfmt=5,
         max_target_seqs=max_seqs,
         max_hsps=max_hsps,
+        perc_identity=identity,
         out=blast_out
     )
     #   Run BLASTn
@@ -133,6 +137,7 @@ def run_blastn(bconf):
         evalue = bconf['evalue']
         max_seqs = bconf['max_seqs']
         max_hsps = bconf['max_hsps']
+        identity = bconf['identity']
         keep_query = bconf['keep_query']
     except AssertionError:
         raise
@@ -148,6 +153,7 @@ def run_blastn(bconf):
                 evalue=evalue,
                 max_seqs=max_seqs,
                 max_hsps=max_hsps,
+                identity=identity,
                 keep_query=keep_query
             )
         elif 'subject' in bconf.keys():
@@ -158,6 +164,7 @@ def run_blastn(bconf):
                 evalue=evalue,
                 max_seqs=max_seqs,
                 max_hsps=max_hsps,
+                identity=identity,
                 keep_query=keep_query
             )
         else:
