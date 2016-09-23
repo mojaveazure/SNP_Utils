@@ -28,7 +28,7 @@ def blast_based(args, lookup_dict):
         assert isinstance(args, dict)
         assert isinstance(lookup_dict, dict)
     except AssertionError:
-        raise
+        raise TypeError
     #   If we weren't provided a BLAST XML file
     if not args['xml']:
         #   Run BLASTn

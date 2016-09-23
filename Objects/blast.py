@@ -33,10 +33,14 @@ class Hsp(object):
         Hsp start relative to subject
         Hsp end relative to subject
         Subject strand (forward or reverse)
+        Hsp bit-score
+        Identity
+        Aligned length
         SNP Position relative to subject (once calcualted with Hsp.get_snp_position())
         """
-    def __init__(self, chrom, name, evalue, qseq, hseq, hstart, hend, hstrand):
+    def __init__(self, chrom, name, evalue, qseq, hseq, hstart, hend, hstrand, bit_score, identity, aligned_length):
         try:
+            assert isinstance(bit_score, int) or isinstance(bit_score, float)
             assert isinstance(chrom, str)
             assert isinstance(name, str)
             assert isinstance(evalue, float)
@@ -46,8 +50,11 @@ class Hsp(object):
             assert isinstance(hend, int)
             assert isinstance(hstrand, int)
             assert hstrand == 1 or hstrand == -1
+            assert isinstance(identity, int)
+            assert isinstance(aligned, int)
+            assert identity <= aligned
         except AssertionError:
-            raise
+            raise TypeError
         self._chrom = chrom
         self._name = name
         self._evalue = evalue
@@ -56,6 +63,9 @@ class Hsp(object):
         self._start = hstart
         self._end = hend
         self._hstrand = hstrand
+        self._bits = bit_score
+        self._identity = identity
+        self._alength = aligned
         self._snp_pos = None
 
     def __repr__(self):
@@ -145,7 +155,18 @@ class SNPIteration(object):
             raise
         return tag.findChild(value).text
 
-    _VALS = ['Hsp_evalue', 'Hsp_hit-from', 'Hsp_hit-to', 'Hsp_hit-frame', 'Hsp_qseq', 'Hsp_hseq']
+    _VALS = [
+        'Hsp_bit-score',
+        'Hsp_evalue',
+        'Hsp_hit-from',
+        'Hsp_hit-to',
+        'Hsp_hit-frame',
+        'Hsp_identity',
+        'Hsp_align-len',
+        'Hsp_qseq',
+        'Hsp_hseq'
+    ]
+
     def __init__(self, iteration):
         try:
             assert isinstance(iteration, element.Tag)
@@ -196,7 +217,7 @@ class SNPIteration(object):
                 continue
         for hsp in hsps:
             #   Unpack our tuple
-            (evalue, hsp_start, hsp_end, strand, query, reference) = hsp
+            (bit_score, evalue, hsp_start, hsp_end, strand, identity, align_length, query, reference) = hsp
             #   Make a Hit
             hsp = Hsp(
                 chrom=chrom,
@@ -206,7 +227,10 @@ class SNPIteration(object):
                 hseq=reference,
                 hstart=int(hsp_start),
                 hend=int(hsp_end),
-                hstrand=int(strand)
+                hstrand=int(strand),
+                bit_score=bit_score,
+                identity=identity,
+                aligned_length=align_length
             )
             #   Add our hsp to the list of hsp
             self._hsps.append(hsp)
@@ -237,9 +261,7 @@ class SNPIteration(object):
                 #   Make a hit out of every SNP
                 s = snp.SNP(lookup, hit)
                 snp_list.append(s)
-                # snp_list = [snp.SNP(lookup, hit) for hit in self._hits]
         except NoSNPError:
             no_snp.append(lookup.get_snpid())
         return(snp_list, no_snp)
-
 

@@ -109,12 +109,6 @@ class SNP(object):
             raise NotImplementedError("Cannot compare type SNP to " + type(other))
 
     def __hash__(self):
-        # get_num = re.compile(r'([0-9]+)').findall
-        # num_list = get_num(self._snpid)
-        # nums = ''.join(num_list)
-        # if nums == '':
-        #     raise ValueError("Invalid SNP ID: " + self._snpid)
-        # return int(nums)
         return hash(self._snpid)
 
     def _calculate_position(self, lookup, alignment):
@@ -156,6 +150,7 @@ class SNP(object):
 
     @_find_states.add
     def _find_states(self, lookup, hit):
+        """Get the reference and alternate alleles"""
         try:
             assert isinstance(lookup, Lookup)
             assert isinstance(hit, blast.Hsp)
@@ -165,7 +160,7 @@ class SNP(object):
                 self._reference = self.reverse_complement(self._reference)
                 self._alternate = self.reverse_complement(self._alternate)
         except AssertionError:
-            raise
+            raise TypeError
         except NoSNPError:
             raise
         except NotABaseError:
@@ -206,6 +201,7 @@ class Lookup(object):
         SNP Position from forward
         SNP Position from reverse
     """
+
     # A dictionary of IUPAC codes for SNPs
     _IUPAC_CODES = {
         'R' : 'AG',
@@ -215,6 +211,7 @@ class Lookup(object):
         'K' : 'GT',
         'M' : 'AC'
     }
+
     def __init__(self, snpid, sequence):
         #   We're given the SNP ID and sequence when making the object, everything else 
         #   can be made with _capture_snp() and _find_iupac()
@@ -233,20 +230,17 @@ class Lookup(object):
         return self._snpid + ':' + self._code
 
     def __eq__(self, other):
-        try:
-            if isinstance(other, Lookup):
-                return self._snpid == other.get_snpid() and self._code == other.get_code()
-            elif isinstance(other, str):
-                if len(other) is 1:
-                    return self._code == other.upper()
-                elif len(other) > 1:
-                    return self._snpid == other.upper()
-                else:
-                    raise NotImplementedError
+        if isinstance(other, Lookup):
+            return self._snp == other._snpid and self._code == other._code
+        elif isinstance(other, str):
+            if len(other) is 1:
+                return self._code == other.upper()
+            elif len(other) > 1:
+                return self._snpid == other
             else:
-                raise NotImplementedError
-        except NotImplementedError:
-            raise
+                return False
+        else:
+            raise NotImplementedError("Cannot compare type Lookup to " + type(other))
 
     def _capture_snp(self):
         """Capture the SNP and it's position from the start and end of the sequence"""
