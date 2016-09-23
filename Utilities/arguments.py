@@ -156,6 +156,16 @@ def make_argument_parser():
         help="Max hsps to keep per hit, defaults to '3'"
     )
     config.add_argument(
+        '-i',
+        '--identity',
+        dest='identity',
+        type=float,
+        default=99,
+        required=False,
+        metavar='PERCENT IDENTITY',
+        help="Percent identity to match, defaults to '99'"
+    )
+    config.add_argument(
         '-k',
         '--keep-query',
         dest='keep_query',
