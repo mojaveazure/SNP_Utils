@@ -81,7 +81,7 @@ class SNP(object):
     @__init__.add
     def __init__(self, lookup, hit):
         try:
-            assert isinstance(hit, blast.Hit)
+            assert isinstance(hit, blast.Hsp)
             self.__init__(lookup)
         except AssertionError:
             raise
@@ -158,7 +158,7 @@ class SNP(object):
     def _find_states(self, lookup, hit):
         try:
             assert isinstance(lookup, Lookup)
-            assert isinstance(hit, blast.Hit)
+            assert isinstance(hit, blast.Hsp)
             self._reference = hit.get_subject_allele() # Get the reference allele from the Hit
             self._alternate = lookup.get_alternate(self._reference) # Get the alternate from the Lookup
             if hit.get_rc():

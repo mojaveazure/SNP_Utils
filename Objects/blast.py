@@ -21,19 +21,19 @@ class NoSNPError(Exception):
     """A SNP has not been found"""
 
 
-#   A class definition for a BLAST hit
-class Hit(object):
-    """This is a class for a BLAST hit
+#   A class definition for a BLAST Hsp
+class Hsp(object):
+    """This is a class for a BLAST Hsp
     It continas the following information:
         Chromosome name
         Query name
-        Hit e-value
+        Hsp e-value
         Query sequence
         Subject sequence
-        Hit start relative to subject
-        Hit end relative to subject
+        Hsp start relative to subject
+        Hsp end relative to subject
         Subject strand (forward or reverse)
-        SNP Position relative to subject (once calcualted with Hit.get_snp_position())
+        SNP Position relative to subject (once calcualted with Hsp.get_snp_position())
         """
     def __init__(self, chrom, name, evalue, qseq, hseq, hstart, hend, hstrand):
         try:
@@ -62,11 +62,11 @@ class Hit(object):
         return self._name + ":" + str(self._evalue)
 
     def get_chrom(self):
-        """Get the chromosome that the hit matched to"""
+        """Get the chromosome that the hsp matched to"""
         return self._chrom
 
     def get_name(self):
-        """Get the query name of the hit"""
+        """Get the query name of the hsp"""
         return self._name
 
     def get_rc(self):
@@ -80,10 +80,10 @@ class Hit(object):
             assert isinstance(expected, int)
         except AssertionError:
             raise
-        #   If we don't find the SNP in this hit
+        #   If we don't find the SNP in this hsp
         if self._query.find(query_snp) is -1:
             raise NoSNPError # Error out
-        #   If the hit sequence is less than our expected value
+        #   If the hsp sequence is less than our expected value
         elif len(self._query) < expected or (self._query.find(query_snp) < expected and self._query.count(query_snp) == 1):
             #   Do some guesswork as to where the SNP is
             self._snp_pos = self._query.find(query_snp)
@@ -136,7 +136,7 @@ class Hit(object):
 #   A class definition for holding Iterations
 class SNPIteration(object):
     """This is a class for holding BLAST iterations
-    It holds the SNP name and a list of hits"""
+    It holds the SNP name and a list of hsps"""
     @staticmethod
     def GET_VALUE(tag, value):
         try:
@@ -152,17 +152,17 @@ class SNPIteration(object):
         except AssertionError:
             raise
         self._snpid = SNPIteration.GET_VALUE(iteration, 'Iteration_query-def')
-        self._hits = []
+        self._hsps = []
         self._fail = False
-        #   Start parsing hits
+        #   Start parsing hits and hsps
         for hit in iteration.findAll('Hit'):
             self._parse_hit(hit)
-        # If we don't have any hits, set 'self._fail' to True
-        if len(self._hits) < 1:
+        # If we don't have any hsps, set 'self._fail' to True
+        if len(self._hsps) < 1:
             self._fail = True
 
     def __repr__(self):
-        return self._snpid + '(' + str(len(self._hits)) + ' hit(s))'
+        return self._snpid + '(' + str(len(self._hsps)) + ' hsp(s))'
 
     def _parse_hsp(self, hsp):
         """Parse the hsp section of a BLAST XML"""
@@ -196,20 +196,20 @@ class SNPIteration(object):
                 continue
         for hsp in hsps:
             #   Unpack our tuple
-            (evalue, hit_start, hit_end, strand, query, reference) = hsp
+            (evalue, hsp_start, hsp_end, strand, query, reference) = hsp
             #   Make a Hit
-            hit = Hit(
+            hsp = Hsp(
                 chrom=chrom,
                 name=self._snpid,
                 evalue=float(evalue),
                 qseq=query,
                 hseq=reference,
-                hstart=int(hit_start),
-                hend=int(hit_end),
+                hstart=int(hsp_start),
+                hend=int(hsp_end),
                 hstrand=int(strand)
             )
-            #   Add our Hit to the list of Hits
-            self._hits.append(hit)
+            #   Add our hsp to the list of hsp
+            self._hsps.append(hsp)
 
     def get_snpid(self):
         """Get the SNP ID for this iteration"""
@@ -233,7 +233,7 @@ class SNPIteration(object):
         no_snp = []
         snp_list = []
         try:
-            for hit in self._hits:
+            for hit in self._hsps:
                 #   Make a hit out of every SNP
                 s = snp.SNP(lookup, hit)
                 snp_list.append(s)
