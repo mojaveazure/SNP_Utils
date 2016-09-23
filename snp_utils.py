@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A script to find SNP positions from a BLAST search"""
+"""A script to find SNP positions"""
 
 import sys
 if sys.version_info.major is not 3:
