@@ -51,8 +51,8 @@ class Hsp(object):
             assert isinstance(hstrand, int)
             assert hstrand == 1 or hstrand == -1
             assert isinstance(identity, int)
-            assert isinstance(aligned, int)
-            assert identity <= aligned
+            assert isinstance(aligned_length, int)
+            assert identity <= aligned_length
         except AssertionError:
             raise TypeError
         self._chrom = chrom
@@ -65,7 +65,7 @@ class Hsp(object):
         self._hstrand = hstrand
         self._bits = bit_score
         self._identity = identity
-        self._alength = aligned
+        self._alength = aligned_length
         self._snp_pos = None
 
     def __repr__(self):
@@ -124,7 +124,7 @@ class Hsp(object):
 
     @overload
     def get_subject_allele(self):
-        """Get the reference allele if the SNP has been found"""
+        """Get the reference allele"""
         try:
             assert self._snp_pos is not None
             ref = self._subject[self._snp_pos]
@@ -132,13 +132,10 @@ class Hsp(object):
             return ref
         except AssertionError:
             raise NoSNPError
-        # if self._snp_pos is None:
-        #     raise NoSNPError
-        # return self._subject[self._snp_pos]
 
     @get_subject_allele.add
     def get_subject_allele(self, query_snp, expected):
-        """Get the reference allele if the SNP has been found"""
+        """Get the reference allele"""
         genomic_position = self.get_snp_position(query_snp, expected)
         return (genomic_position, self.get_subject_allele())
 
