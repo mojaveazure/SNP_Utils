@@ -247,7 +247,7 @@ class SNPIteration(object):
             assert isinstance(lookup, snp.Lookup)
             self.check_fail()
         except AssertionError:
-            raise
+            raise TypeError
         except NoSNPError:
             raise
         #   Some holding lists
