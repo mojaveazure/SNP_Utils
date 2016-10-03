@@ -5,9 +5,11 @@ import sys
 if sys.version_info.major is not 3:
     sys.exit("Please use Python 3 for this module: " + __name__)
 
+
 from itertools import repeat
 
 from . import snp
+from Utilities.utilities import rank_remove
 
 try:
     from overload import overload
@@ -15,6 +17,18 @@ try:
 except ImportError as error:
     sys.exit("Please install " + error.name)
 
+
+VALS = [
+        'Hsp_bit-score',
+        'Hsp_evalue',
+        'Hsp_hit-from',
+        'Hsp_hit-to',
+        'Hsp_hit-frame',
+        'Hsp_identity',
+        'Hsp_align-len',
+        'Hsp_qseq',
+        'Hsp_hseq'
+    ]
 
 #   An error I probably overuse...
 class NoSNPError(Exception):
@@ -49,12 +63,15 @@ class Hsp(object):
             assert isinstance(hstart, int)
             assert isinstance(hend, int)
             assert isinstance(hstrand, int)
-            assert hstrand == 1 or hstrand == -1
             assert isinstance(identity, int)
             assert isinstance(aligned_length, int)
-            assert identity <= aligned_length
         except AssertionError:
             raise TypeError
+        try:
+            assert hstrand == 1 or hstrand == -1
+            assert identity <= aligned_length
+        except AssertionError:
+            raise ValueError
         self._chrom = chrom
         self._name = name
         self._evalue = evalue
@@ -67,9 +84,53 @@ class Hsp(object):
         self._identity = identity
         self._alength = aligned_length
         self._snp_pos = None
+        self._snp = None
 
     def __repr__(self):
         return self._name + ":" + str(self._evalue)
+
+    def __eq__(self, other):
+        if isinstance(other, Hsp):
+            name_bool = self._name == other._name
+            eval_bool = self._evalue == other._evalue
+            score_bool = self._bits == other._bits
+            return name_bool and eval_bool and score_bool
+        elif isinstance(other, str):
+            return self._name == other
+        elif isinstance(other, float):
+            return self._evalue == other
+        else:
+            return NotImplemented
+
+    def __lt__(self, other):
+        if isinstance(other, Hsp):
+            if self._evalue == other._evalue:
+                #   A small evalue should go with a larger score
+                return self._bits > other._bits
+            else:
+                return self._evalue < other._evalue
+        elif isinstance(other, float):
+            return self._evalue < other
+        else:
+            return NotImplemented
+
+    def __le__(self, other):
+        if isinstance(other, Hsp):
+            if self._evalue <= other._evalue:
+                #   A small evalue should go with a larger score
+                return self._bits >= other._bits
+            else:
+                return False
+        elif isinstance(other, float):
+            return self._evalue <= other
+        else:
+            return NotImplemented
+
+    def __bool__(self):
+        return bool(self._snp_pos)
+
+    def __hash__(self):
+        return hash(self._name)
 
     def get_chrom(self):
         """Get the chromosome that the hsp matched to"""
@@ -138,6 +199,37 @@ class Hsp(object):
         """Get the reference allele"""
         genomic_position = self.get_snp_position(query_snp, expected)
         return (genomic_position, self.get_subject_allele())
+
+    @overload
+    def add_snp(self, this_snp):
+        """Add a SNP to our Hsp"""
+        try:
+            assert isinstance(this_snp, snp.SNP)
+        except AssertionError:
+            raise TypeError
+        self._snp = this_snp
+
+    @add_snp.add
+    def add_snp(self, lookup):
+        """Add a SNP to our HSP"""
+        try:
+            assert isinstance(lookup, snp.Lookup)
+        except AssertionError:
+            raise TypeError
+        try:
+            assert self._name == lookup.get_snpid()
+            s = snp.SNP(lookup=lookup, hsp=self)
+            self.add_snp(this_snp=s)
+        except AssertionError:
+            raise ValueError
+        except:
+            raise
+
+    def get_snp(self):
+        """Return the SNP associated with this Hsp"""
+        if not self._snp:
+            raise NoSNPError
+        return self._snp
 
 
 #   A class definition for holding Iterations
@@ -227,7 +319,7 @@ class SNPIteration(object):
                 hstrand=int(strand),
                 bit_score=bit_score,
                 identity=identity,
-                aligned_length=align_length
+                aligned_length=int(align_length)
             )
             #   Add our hsp to the list of hsp
             self._hsps.append(hsp)
@@ -261,4 +353,121 @@ class SNPIteration(object):
         except NoSNPError:
             no_snp.append(lookup.get_snpid())
         return(snp_list, no_snp)
+
+
+#   A function to get the value from a tag
+def get_value(tag, value):
+    try:
+        assert isinstance(tag, element.Tag)
+    except AssertionError:
+        raise
+    return tag.findChild(value).text
+
+
+#   A function to parse the HSP section of a BLAST XML file
+def parse_hsp(hsp):
+    try:
+        assert isinstance(hsp, element.Tag)
+    except AssertionError:
+        raise TypeError
+    if hsp.findChild('Hsp_midline').text.count(' ') < 1:
+        raise NoSNPError
+    hsp_vals = map(get_value, repeat(hsp, len(VALS)), VALS)
+    return tuple(hsp_vals)
+
+
+#   A function to parse the Hit section of a BLAST XML file
+def parse_hit(snpid, hit):
+    try:
+        assert isinstance(snpid, str)
+        assert isinstance(hit, element.Tag)
+    except AssertionError:
+        raise TypeError
+    chrom = get_value(hit, 'Hit_def')
+    vals = list()
+    hsps = list()
+    for hsp in hit.findAll('Hsp'):
+        try:
+            hsp_vals = parse_hsp(hsp)
+            vals.append(hsp_vals)
+        except NoSNPError:
+            continue
+    for val in vals:
+        (bit_score, evalue, hsp_start, hsp_end, strand, identity, align_length, query, reference) = val
+        hsp = Hsp(
+            chrom=chrom,
+            name=snpid,
+            evalue=float(evalue),
+            qseq=query,
+            hseq=reference,
+            hstart=int(hsp_start),
+            hend=int(hsp_end),
+            hstrand=int(strand),
+            bit_score=float(bit_score),
+            identity=int(identity),
+            aligned_length=int(align_length)
+        )
+        hsps.append(hsp)
+    if hsps:
+        return hsps
+    else:
+        return False
+
+
+#   A function to rank HSPs
+def rank_hsps(hsps):
+    try:
+        assert isinstance(hsps, list) or isinstance(hsps, tuple)
+        for h in hsps:
+            assert isinstance(h, Hsp)
+    except AssertionError:
+        raise TypeError
+    hsp_dict = {}
+    for h in hsps:
+        if h.get_name() in hsp_dict.keys():
+            hsp_dict[h.get_name()].append(h)
+        else:
+            hsp_dict[h.get_name()] = [h]
+    hsps_ranked = {name : rank_remove(hsp_list, lowest=True) for name, hsp_list in hsp_dict.items()}
+    return hsps_ranked
+
+
+#   Extra space
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

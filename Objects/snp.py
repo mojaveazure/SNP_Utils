@@ -54,7 +54,7 @@ class SNP(object):
         try:
             assert isinstance(lookup, Lookup)
         except AssertionError:
-            raise
+            raise TypeError
         self._snpid = lookup.get_snpid()
         #   Everything else gets made in a bit
         self._contig = None
@@ -68,8 +68,8 @@ class SNP(object):
             assert isinstance(alignment, Alignment)
             assert isinstance(reference, dict)
             self.__init__(lookup)
-        except AssertionError:
-            raise
+        except:
+            raise TypeError
         if self._snpid != alignment.get_name():
             raise NoMatchError
         #   The contig is found in the alignment
@@ -79,19 +79,19 @@ class SNP(object):
         self._find_states(lookup, alignment, reference) # Reference and alternate states
 
     @__init__.add
-    def __init__(self, lookup, hit):
+    def __init__(self, lookup, hsp):
         try:
-            assert isinstance(hit, blast.Hsp)
+            assert isinstance(hsp, blast.Hsp)
             self.__init__(lookup)
-        except AssertionError:
-            raise
-        if self._snpid != hit.get_name():
+        except:
+            raise TypeError
+        if self._snpid != hsp.get_name():
             raise NoMatchError
-        #   The contig and SNP position are found in the hit
-        self._contig = hit.get_chrom()
-        self._position = hit.get_snp_position(lookup.get_code(), lookup.get_forward_position())
+        #   The contig and SNP position are found in the hsp
+        self._contig = hsp.get_chrom()
+        self._position = hsp.get_snp_position(lookup.get_code(), lookup.get_forward_position())
         #   Get the rest of the information
-        self._find_states(lookup, hit) # Reference and alternate states
+        self._find_states(lookup, hsp) # Reference and alternate states
 
     def __repr__(self):
         return self._snpid
@@ -106,7 +106,7 @@ class SNP(object):
         elif isinstance(other, int):
             return self._position == other
         else:
-            raise NotImplementedError("Cannot compare type SNP to " + type(other))
+            return NotImplemented
 
     def __hash__(self):
         return hash(self._snpid)
@@ -149,14 +149,14 @@ class SNP(object):
             self._alternate = lookup.get_alternate(self._reference) # An 'N' will be returned if the reference allele doesn't match with our IUPAC code
 
     @_find_states.add
-    def _find_states(self, lookup, hit):
+    def _find_states(self, lookup, hsp):
         """Get the reference and alternate alleles"""
         try:
             assert isinstance(lookup, Lookup)
-            assert isinstance(hit, blast.Hsp)
-            self._reference = hit.get_subject_allele() # Get the reference allele from the Hit
+            assert isinstance(hsp, blast.Hsp)
+            self._reference = hsp.get_subject_allele() # Get the reference allele from the Hit
             self._alternate = lookup.get_alternate(self._reference) # Get the alternate from the Lookup
-            if hit.get_rc():
+            if hsp.get_rc():
                 self._reference = self.reverse_complement(self._reference)
                 self._alternate = self.reverse_complement(self._alternate)
         except AssertionError:
@@ -169,6 +169,14 @@ class SNP(object):
     def get_snpid(self):
         """Get the SNP ID"""
         return self._snpid
+
+    def get_chrom(self):
+        """Get the chromosome/contig"""
+        return self._contig
+
+    def get_position(self):
+        """Get the position of the SNP"""
+        return self._position
 
     def check_masked(self):
         """Check to see if our alternate allele is masked"""
@@ -240,7 +248,7 @@ class Lookup(object):
             else:
                 return False
         else:
-            raise NotImplementedError("Cannot compare type Lookup to " + type(other))
+            return NotImplemented
 
     def _capture_snp(self):
         """Capture the SNP and it's position from the start and end of the sequence"""

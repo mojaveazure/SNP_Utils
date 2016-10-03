@@ -5,11 +5,13 @@ import sys
 if sys.version_info.major is not 3:
     sys.exit("Please use Python 3 for this script")
 
+
 from Utilities import arguments
 from Utilities import utilities
 from Objects import snp
 from Objects import blast
 from Objects.snp import NotABaseError
+from Objects.snp import NoMatchError
 from Objects.blast import NoSNPError
 from BLAST import runblastn
 from BLAST import configure
@@ -50,31 +52,44 @@ def blast_based(args, lookup_dict):
         blast_soup = BeautifulSoup(blast_xml, 'xml')
     except FeatureNotFound:
         sys.exit("Please install 'lxml' to properly parse the BLAST results")
-    iteration_dictionary = {} # Holds iterations stored by SNP ID
-    no_hit = [] # List of SNP IDs
-    snp_list = [] # List of snp.SNPs
-    #   For every query in our BLAST soup
+    no_hits = set() # A set to hold no hits
+    snp_list = []
+    hsps = [] # A list of HSPs from the XML file
     for query in blast_soup.findAll('Iteration'):
-        iteration = blast.SNPIteration(query) # Make an iteration
-        iteration_dictionary[iteration.get_snpid()] = iteration # Add to our dictionary
-    #   For every SNP in our lookup table
-    for snpid, l in lookup_dict.items():
+        snpid = blast.get_value(tag=query, value='Iteration_query-def')
+        for hit in query.findAll('Hit'):
+            hit_num = blast.get_value(tag=hit, value='Hit_num')
+            this_hsps = blast.parse_hit(snpid=snpid, hit=hit)
+            try:
+                hsps += this_hsps
+            except TypeError:
+                print('No HSPs for', snpid, 'hit number:', hit_num, file=sys.stderr)
+                no_hits.add(snpid)
+                continue
+    # hit_snps = {hsp.get_name() for hsp in hsps}
+    # lookup_snps = set(lookup_dict.keys())
+    # no_hit += lookup_snps - hit_snps
+    for hsp in hsps:
+        snpid = hsp.get_name()
+        lookup = lookup_dict[snpid]
         try:
-            if snpid in iteration_dictionary: # If the SNP was found in BLAST
-                snps, fail = iteration_dictionary[snpid].hit_snps(l) # Get SNPs and failures for every hit for this iteration
-                snp_list += snps # Add to our list of SNPs
-                no_hit += fail # Add to our list of failures
-            else:
-                raise NoSNPError
-        except NoSNPError:
-            print("No hit found for", snpid, file=sys.stderr)
-            no_hit.append(snpid)
-        except NotABaseError:
-            print("Something happened with", snpid, file=sys.stderr)
-            no_hit.append(snpid)
+            hsp.add_snp(lookup=lookup)
+        except (NoSNPError, NotABaseError, NoMatchError):
+            no_hits.add(snpid)
+            hsps.remove(hsp)
     #   Close the XML file
     blast_xml.close()
-    return(snp_list, no_hit)
+    #   Rank
+    hsps_ranked = blast.rank_hsps(hsps=hsps)
+    for hsps in hsps_ranked.values():
+        for hsp in hsps:
+            try:
+                snp_list.append(hsp.get_snp())
+            except NoSNPError:
+                no_hits.add(hsp.get_name())
+    hit_snps = set(hsps_ranked.keys())
+    no_hits -= hit_snps
+    return(snp_list, no_hits)
 
 
 #   Write the output files
@@ -147,7 +162,7 @@ def main():
             raise NotImplementedError("Finding SNPs using a SAM file is not yet implemented")
         masked = filter(lambda s: s.check_masked(), snp_list)
         proper_snps = filter(lambda s: not s.check_masked(), snp_list)
-        write_outputs(args, proper_snps, masked, no_snps, method)
+        write_outputs(args, proper_snps, masked, list(no_snps), method)
 
 
 if __name__ == '__main__':
