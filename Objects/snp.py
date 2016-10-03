@@ -306,4 +306,3 @@ class Lookup(object):
             self._iupac
         ]
         return '\n'.join(fasta)
-

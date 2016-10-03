@@ -66,9 +66,6 @@ def blast_based(args, lookup_dict):
                 print('No HSPs for', snpid, 'hit number:', hit_num, file=sys.stderr)
                 no_hits.add(snpid)
                 continue
-    # hit_snps = {hsp.get_name() for hsp in hsps}
-    # lookup_snps = set(lookup_dict.keys())
-    # no_hit += lookup_snps - hit_snps
     for hsp in hsps:
         snpid = hsp.get_name()
         lookup = lookup_dict[snpid]
@@ -102,7 +99,7 @@ def write_outputs(args, snp_filter, masked_filter, no_snps, method):
         assert isinstance(no_snps, list)
         assert isinstance(method, str)
     except AssertionError:
-        raise
+        raise TypeError
     header = '##fileformat=VCFv4.2\n##INFO<ID=s,Number=1,Type=Flag,Description="Variant is calculated from %s">\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n' % method
     outfile = args['outname'] + '.vcf'
     maskedfile = args['outname'] + '_masked.vcf'

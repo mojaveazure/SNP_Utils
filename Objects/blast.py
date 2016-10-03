@@ -147,10 +147,13 @@ class Hsp(object):
     def get_snp_position(self, query_snp, expected):
         """Calculate the SNP position relative to reference"""
         try:
-            assert len(query_snp) is 1
             assert isinstance(expected, int)
         except AssertionError:
-            raise
+            raise TypeError
+        try:
+            assert len(query_snp) is 1
+        except AssertionError:
+            raise ValueError
         #   If we don't find the SNP in this hsp
         if self._query.find(query_snp) is -1:
             raise NoSNPError # Error out
@@ -232,129 +235,6 @@ class Hsp(object):
         return self._snp
 
 
-#   A class definition for holding Iterations
-class SNPIteration(object):
-    """This is a class for holding BLAST iterations
-    It holds the SNP name and a list of hsps"""
-    @staticmethod
-    def GET_VALUE(tag, value):
-        try:
-            assert isinstance(tag, element.Tag)
-        except AssertionError:
-            raise
-        return tag.findChild(value).text
-
-    _VALS = [
-        'Hsp_bit-score',
-        'Hsp_evalue',
-        'Hsp_hit-from',
-        'Hsp_hit-to',
-        'Hsp_hit-frame',
-        'Hsp_identity',
-        'Hsp_align-len',
-        'Hsp_qseq',
-        'Hsp_hseq'
-    ]
-
-    def __init__(self, iteration):
-        try:
-            assert isinstance(iteration, element.Tag)
-        except AssertionError:
-            raise
-        self._snpid = SNPIteration.GET_VALUE(iteration, 'Iteration_query-def')
-        self._hsps = []
-        self._fail = False
-        #   Start parsing hits and hsps
-        for hit in iteration.findAll('Hit'):
-            self._parse_hit(hit)
-        # If we don't have any hsps, set 'self._fail' to True
-        if len(self._hsps) < 1:
-            self._fail = True
-
-    def __repr__(self):
-        return self._snpid + '(' + str(len(self._hsps)) + ' hsp(s))'
-
-    def _parse_hsp(self, hsp):
-        """Parse the hsp section of a BLAST XML"""
-        try:
-            assert isinstance(hsp, element.Tag)
-        except AssertionError:
-            raise
-        #   If there are no gaps in this hsp
-        if hsp.findChild('Hsp_midline').text.count(' ') < 1:
-            #   Skip
-            raise NoSNPError
-        #   Collect all values
-        hsp_vals = map(SNPIteration.GET_VALUE, repeat(hsp, len(self._VALS)), self._VALS)
-        #   Return as a tuple
-        return tuple(hsp_vals)
-
-    def _parse_hit(self, hit):
-        """Parse the hit section of a BLAST XML"""
-        try:
-            assert isinstance(hit, element.Tag)
-        except AssertionError:
-            raise
-        chrom = SNPIteration.GET_VALUE(hit, 'Hit_def') # Get the chromosome information
-        hsps = [] # A list to hold hsps
-        for hsp in hit.findAll('Hsp'):
-            try:
-                #   Try to parse the hsp
-                hsp_vals = self._parse_hsp(hsp)
-                hsps.append(hsp_vals)
-            except NoSNPError: # If there's no gap, skip
-                continue
-        for hsp in hsps:
-            #   Unpack our tuple
-            (bit_score, evalue, hsp_start, hsp_end, strand, identity, align_length, query, reference) = hsp
-            #   Make a Hit
-            hsp = Hsp(
-                chrom=chrom,
-                name=self._snpid,
-                evalue=float(evalue),
-                qseq=query,
-                hseq=reference,
-                hstart=int(hsp_start),
-                hend=int(hsp_end),
-                hstrand=int(strand),
-                bit_score=bit_score,
-                identity=identity,
-                aligned_length=int(align_length)
-            )
-            #   Add our hsp to the list of hsp
-            self._hsps.append(hsp)
-
-    def get_snpid(self):
-        """Get the SNP ID for this iteration"""
-        return self._snpid
-
-    def check_fail(self):
-        """See if we are lacking any hits"""
-        if self._fail:
-            raise NoSNPError
-
-    def hit_snps(self, lookup):
-        """Find SNPs for our Hits"""
-        try:
-            assert isinstance(lookup, snp.Lookup)
-            self.check_fail()
-        except AssertionError:
-            raise TypeError
-        except NoSNPError:
-            raise
-        #   Some holding lists
-        no_snp = []
-        snp_list = []
-        try:
-            for hit in self._hsps:
-                #   Make a hit out of every SNP
-                s = snp.SNP(lookup, hit)
-                snp_list.append(s)
-        except NoSNPError:
-            no_snp.append(lookup.get_snpid())
-        return(snp_list, no_snp)
-
-
 #   A function to get the value from a tag
 def get_value(tag, value):
     try:
@@ -430,44 +310,3 @@ def rank_hsps(hsps):
             hsp_dict[h.get_name()] = [h]
     hsps_ranked = {name : rank_remove(hsp_list, lowest=True) for name, hsp_list in hsp_dict.items()}
     return hsps_ranked
-
-
-#   Extra space
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
