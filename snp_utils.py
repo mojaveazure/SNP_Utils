@@ -108,6 +108,7 @@ def write_outputs(args, snp_filter, masked_filter, no_snps, method):
     maskedfile = args['outname'] + '_masked.vcf'
     failedfile = args['outname'] + '_failed.log'
     snp_list = list(snp_filter)
+    snp_list.sort(key=lambda s : (s.get_chrom(), s.get_position()))
     if len(snp_list) < 1:
         print("Failed to find any SNPs", file=sys.stderr)
     else:
