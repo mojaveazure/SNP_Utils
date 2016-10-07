@@ -151,7 +151,6 @@ def run_blastn(bconf):
         if 'database' in bconf.keys():
             database = bconf['database']
             validate_db(database)
-            sys.exit()
             blast_out = run_blastn(
                 query=query,
                 database=database,
