@@ -40,7 +40,7 @@ def validate_db(db_name):
     db_directory = os.path.dirname(db_name)
     if not db_directory:
         db_directory = os.getcwd()
-    print('Searching for proper database contents for', db_name, 'in', db_directory, file=sys.stderr)
+    print('Searching for proper database files for', db_name, 'in', db_directory, file=sys.stderr)
     db_contents = '\n'.join(os.listdir(db_directory))
     if not nhr(db_contents) and not nin(db_contents) and not nsq(db_contents) and not nal(db_contents):
         raise FileNotFoundError("Failed to find the BLAST nucleotide database")
