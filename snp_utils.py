@@ -32,7 +32,7 @@ def blast_based(args, lookup_dict):
     except AssertionError:
         raise TypeError
     #   If we weren't provided a BLAST XML file
-    if not args['xml']:
+    if 'xml' not in args.keys():
         #   Run BLASTn
         print("Running BLAST", file=sys.stderr)
         #   Configure BLAST
