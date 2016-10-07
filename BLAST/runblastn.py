@@ -38,7 +38,7 @@ def validate_db(db_path):
     nin = re.compile(r'(%s\.[0-9\.]*nin)' % db_name).search
     nsq = re.compile(r'(%s\.[0-9\.]*nsq)' % db_name).search
     nal = re.compile(r'(%s\.*nal)' % db_name).search
-    db_directory = os.path.abspath(os.path.realpath(os.path.dirname(db_name)))
+    db_directory = os.path.abspath(os.path.realpath(os.path.dirname(db_path)))
     if not db_directory:
         db_directory = os.getcwd()
     print('Searching for proper database files for', db_name, 'in', db_directory, file=sys.stderr)
