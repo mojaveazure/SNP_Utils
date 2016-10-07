@@ -32,12 +32,15 @@ def validate_db(db_name):
     try:
         assert isinstance(db_name, str)
     except AssertionError:
-        raise
+        raise TypeError
     nhr = re.compile(r'(%s\.[0-9\.]*nhr)' % db_name).search
     nin = re.compile(r'(%s\.[0-9\.]*nin)' % db_name).search
     nsq = re.compile(r'(%s\.[0-9\.]*nsq)' % db_name).search
     nal = re.compile(r'(%s\.*nal)' % db_name).search
     db_directory = os.path.dirname(db_name)
+    if not db_directory:
+        db_directory = os.getcwd()
+    print('Searching for proper database contents for', db_name, 'in', db_directory, file=sys.stderr)
     db_contents = '\n'.join(os.listdir(db_directory))
     if not nhr(db_contents) and not nin(db_contents) and not nsq(db_contents) and not nal(db_contents):
         raise FileNotFoundError("Failed to find the BLAST nucleotide database")
@@ -170,7 +173,7 @@ def run_blastn(bconf):
         else:
             raise MalformedConfigError
         return blast_out
-    except FileNotFoundError:
+    except (FileNotFoundError, MalformedConfigError):
         raise
 
 

@@ -31,7 +31,7 @@ def make_argument_parser():
         default=None,
         required=False,
         metavar='BLAST XML RESULTS',
-        help="Optional BLAST XML results already found"
+        help="Optional BLAST XML results already found, incompatible with '-c | --config'"
     )
     blast_modes.add_argument(
         '-c',
@@ -40,7 +40,7 @@ def make_argument_parser():
         type=str,
         default=None,
         metavar='BLAST CONFIG FILE',
-        help="Configuration file for running BLAST"
+        help="Configuration file for running BLAST, incompatible with '-x | --xml'"
     )
     blast.add_argument(
         '-l',
@@ -61,6 +61,16 @@ def make_argument_parser():
         required=False,
         metavar='OUTPUT NAME',
         help="Name of output file, without suffix. Defaults to 'output'"
+    )
+    blast.add_argument(
+        '-r',
+        '--rank-snps',
+        dest='rank',
+        action='store_const',
+        const=True,
+        default=False,
+        required=False,
+        help="Do we rank the SNPs and take the lowest e-value/highest scoring BLAST results? Pass '-r | --rank-snps' to say yes"
     )
     #   Alignment subparser
     sam = subparsers.add_parser('SAM')

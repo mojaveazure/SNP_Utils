@@ -72,19 +72,24 @@ def blast_based(args, lookup_dict):
         try:
             hsp.add_snp(lookup=lookup)
         except (NoSNPError, NotABaseError, NoMatchError):
+            print('No SNP for', hsp, file=sys.stderr)
             no_hits.add(snpid)
             hsps.remove(hsp)
     #   Close the XML file
     blast_xml.close()
-    #   Rank
-    hsps_ranked = blast.rank_hsps(hsps=hsps)
-    for hsps in hsps_ranked.values():
+    #   Rank, if asked for
+    if args['rank']:
+        final_hsps = blast.rank_hsps(hsps=hsps)
+    else:
+        final_hsps = {h.get_name() : h for h in hsps}
+    hit_snps = set(final_hsps.keys())
+    for hsps in final_hsps.values():
         for hsp in hsps:
             try:
                 snp_list.append(hsp.get_snp())
             except NoSNPError:
+                print('No SNP for', hsp, file=sys.stderr)
                 no_hits.add(hsp.get_name())
-    hit_snps = set(hsps_ranked.keys())
     no_hits -= hit_snps
     return(snp_list, no_hits)
 
@@ -142,7 +147,8 @@ def main():
     parser = arguments.make_argument_parser()
     if not sys.argv[1:]:
         sys.exit(parser.print_help())
-    args = vars(parser.parse_args())
+    args = {key : value for key, value in vars(parser.parse_args()).items() if value is not None}
+    sys.exit(args)
     if args['method'] == 'CONFIG':
         configure.make_config(args)
     else:
