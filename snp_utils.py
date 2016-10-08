@@ -6,15 +6,19 @@ if sys.version_info.major is not 3:
     sys.exit("Please use Python 3 for this script")
 
 
-from Utilities import arguments
-from Utilities import utilities
-from Objects import snp
-from Objects import blast
-from Objects.snp import NotABaseError
-from Objects.snp import NoMatchError
-from Objects.blast import NoSNPError
-from BLAST import runblastn
-from BLAST import configure
+try:
+    from Utilities import arguments
+    from Utilities import utilities
+    from Objects import snp
+    from Objects import blast
+    from Objects.snp import NotABaseError
+    from Objects.snp import NoMatchError
+    from Objects.blast import NoSNPError
+    from BLAST import runblastn
+    from BLAST import configure
+except ImportError:
+    sys.exit("Please make sure you are in the 'SNP_Utils' directory to load custom modules")
+
 
 try:
     from bs4 import BeautifulSoup
