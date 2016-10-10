@@ -63,7 +63,7 @@ def blast_based(args, lookup_dict):
         snpid = blast.get_value(tag=query, value='Iteration_query-def')
         #   Ask if no hits were found
         try:
-            if blast.get_value(tag=query, value='Iteration_message').capitalize == blast.NO_HIT_MESSAGE:
+            if blast.get_value(tag=query, value='Iteration_message').capitalize() == blast.NO_HIT_MESSAGE:
                 print('No hit for', snpid, file=sys.stderr)
                 no_hits.add(snpid)
                 continue
