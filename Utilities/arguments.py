@@ -20,6 +20,86 @@ def make_argument_parser():
         dest='method',
         help="'BLAST' means we are running a BLAST search to find SNPs, 'SAM' means we are using a SAM file, 'CONFIG' is used to configure a BLAST search"
     )
+    #   Config subparser
+    config = subparsers.add_parser('CONFIG')
+    ref_db = config.add_mutually_exclusive_group(required=True)
+    ref_db.add_argument(
+        '-r',
+        '--reference',
+        dest='subject',
+        type=str,
+        default=None,
+        metavar='REFERNCE SEQUENCE',
+        help="Reference sequence in FASTA format, incompatible with '-d | --database'"
+    )
+    ref_db.add_argument(
+        '-d',
+        '--database',
+        dest='database',
+        type=str,
+        default=None,
+        metavar='REFERENCE DATABASE',
+        help="Reference BLAST nucleotide database, incompatible with '-r | --reference'"
+    )
+    config.add_argument(
+        '-e',
+        '--evalue',
+        dest='evalue',
+        type=float,
+        default=1e-1,
+        required=False,
+        metavar='E-VALUE',
+        help="E-value threshold, defaults to '1e-1'"
+    )
+    config.add_argument(
+        '-s',
+        '--max-seqs',
+        dest='max_seqs',
+        type=int,
+        default=3,
+        required=False,
+        metavar='MAX SEQS',
+        help="Max seqs to keep per query, defaults to '3'"
+    )
+    config.add_argument(
+        '-m',
+        '--max-hsps',
+        dest='max_hsps',
+        type=int,
+        default=3,
+        required=False,
+        metavar='MAX HSPS',
+        help="Max hsps to keep per hit, defaults to '3'"
+    )
+    config.add_argument(
+        '-i',
+        '--identity',
+        dest='identity',
+        type=float,
+        default=99,
+        required=False,
+        metavar='PERCENT IDENTITY',
+        help="Percent identity to match, defaults to '99'"
+    )
+    config.add_argument(
+        '-k',
+        '--keep-query',
+        dest='keep_query',
+        action='store_const',
+        const=True,
+        default=False,
+        required=False,
+        help="Do we keep the query FASTA file? Pass '-k | --keep-query' to say yes"
+    )
+    config.add_argument(
+        '-c',
+        '--config',
+        dest='outfile',
+        default=BLAST_CONFIG,
+        required=False,
+        metavar='BLAST CONFIG FILE',
+        help="Name of BLAST config file to write to, defaults to '" + BLAST_CONFIG + "'"
+    )
     #   BLAST subparser
     blast = subparsers.add_parser('BLAST')
     blast_modes = blast.add_mutually_exclusive_group(required=True)
@@ -113,85 +193,5 @@ def make_argument_parser():
         required=False,
         metavar='OUTPUT NAME',
         help="Name of output file, without suffix. Defaults to 'output'"
-    )
-    #   Config subparser
-    config = subparsers.add_parser('CONFIG')
-    ref_db = config.add_mutually_exclusive_group(required=True)
-    ref_db.add_argument(
-        '-r',
-        '--reference',
-        dest='subject',
-        type=str,
-        default=None,
-        metavar='REFERNCE SEQUENCE',
-        help="Reference sequence in FASTA format, incompatible with '-d | --database'"
-    )
-    ref_db.add_argument(
-        '-d',
-        '--database',
-        dest='database',
-        type=str,
-        default=None,
-        metavar='REFERENCE DATABASE',
-        help="Reference BLAST nucleotide database, incompatible with '-r | --reference'"
-    )
-    config.add_argument(
-        '-e',
-        '--evalue',
-        dest='evalue',
-        type=float,
-        default=1e-1,
-        required=False,
-        metavar='E-VALUE',
-        help="E-value threshold, defaults to '1e-1'"
-    )
-    config.add_argument(
-        '-s',
-        '--max-seqs',
-        dest='max_seqs',
-        type=int,
-        default=3,
-        required=False,
-        metavar='MAX SEQS',
-        help="Max seqs to keep per query, defaults to '3'"
-    )
-    config.add_argument(
-        '-m',
-        '--max-hsps',
-        dest='max_hsps',
-        type=int,
-        default=3,
-        required=False,
-        metavar='MAX HSPS',
-        help="Max hsps to keep per hit, defaults to '3'"
-    )
-    config.add_argument(
-        '-i',
-        '--identity',
-        dest='identity',
-        type=float,
-        default=99,
-        required=False,
-        metavar='PERCENT IDENTITY',
-        help="Percent identity to match, defaults to '99'"
-    )
-    config.add_argument(
-        '-k',
-        '--keep-query',
-        dest='keep_query',
-        action='store_const',
-        const=True,
-        default=False,
-        required=False,
-        help="Do we keep the query FASTA file? Pass '-k | --keep-query' to say yes"
-    )
-    config.add_argument(
-        '-c',
-        '--config',
-        dest='outfile',
-        default=BLAST_CONFIG,
-        required=False,
-        metavar='BLAST CONFIG FILE',
-        help="Name of BLAST config file to write to, defaults to '" + BLAST_CONFIG + "'"
     )
     return parser
