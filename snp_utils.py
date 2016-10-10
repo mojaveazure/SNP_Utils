@@ -61,6 +61,15 @@ def blast_based(args, lookup_dict):
     hsps = [] # A list of HSPs from the XML file
     for query in blast_soup.findAll('Iteration'):
         snpid = blast.get_value(tag=query, value='Iteration_query-def')
+        #   Ask if no hits were found
+        try:
+            if blast.get_value(tag=query, value='Iteration_message').capitalize == blast.NO_HIT_MESSAGE:
+                print('No hit for', snpid, file=sys.stderr)
+                no_hits.add(snpid)
+                continue
+        except AttributeError:
+            pass
+        #   For every hit found
         for hit in query.findAll('Hit'):
             hit_num = blast.get_value(tag=hit, value='Hit_num')
             this_hsps = blast.parse_hit(snpid=snpid, hit=hit)

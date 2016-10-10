@@ -30,6 +30,8 @@ VALS = [
         'Hsp_hseq'
     ]
 
+NO_HIT_MESSAGE='No hits found'
+
 #   An error I probably overuse...
 class NoSNPError(Exception):
     """A SNP has not been found"""
@@ -239,9 +241,11 @@ class Hsp(object):
 def get_value(tag, value):
     try:
         assert isinstance(tag, element.Tag)
+        return tag.findChild(value).text
     except AssertionError:
+        raise TypeError
+    except:
         raise
-    return tag.findChild(value).text
 
 
 #   A function to parse the HSP section of a BLAST XML file
