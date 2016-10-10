@@ -7,12 +7,14 @@ if sys.version_info.major is not 3:
 import argparse
 import os
 
-
 BLAST_CONFIG = os.getcwd() + '/blast_config.ini'
 
 #   Make an argument parser
 def make_argument_parser():
-    parser = argparse.ArgumentParser(add_help=True)
+    parser = argparse.ArgumentParser(
+        add_help=True,
+        prog=sys.argv[0]
+    )
     #   Subparser for BLAST- vs Alignment-based SNP prediction
     subparsers = parser.add_subparsers(
         title='Subroutine',
@@ -22,7 +24,11 @@ def make_argument_parser():
     )
     #   Config subparser
     config = subparsers.add_parser('CONFIG')
-    ref_db = config.add_mutually_exclusive_group(required=True)
+    ref_opts = config.add_argument_group(
+        title='Reference format',
+        description="Choose whether the reference is a sequence or BLAST database"
+    )
+    ref_db = ref_opts.add_mutually_exclusive_group(required=True)
     ref_db.add_argument(
         '-r',
         '--reference',
@@ -41,7 +47,11 @@ def make_argument_parser():
         metavar='REFERENCE DATABASE',
         help="Reference BLAST nucleotide database, incompatible with '-r | --reference'"
     )
-    config.add_argument(
+    blast_opts = config.add_argument_group(
+        title='BLAST Options',
+        description="Options for configuring your BLASTing experience"
+    )
+    blast_opts.add_argument(
         '-e',
         '--evalue',
         dest='evalue',
@@ -51,7 +61,7 @@ def make_argument_parser():
         metavar='E-VALUE',
         help="E-value threshold, defaults to '1e-1'"
     )
-    config.add_argument(
+    blast_opts.add_argument(
         '-s',
         '--max-seqs',
         dest='max_seqs',
@@ -61,7 +71,7 @@ def make_argument_parser():
         metavar='MAX SEQS',
         help="Max seqs to keep per query, defaults to '3'"
     )
-    config.add_argument(
+    blast_opts.add_argument(
         '-m',
         '--max-hsps',
         dest='max_hsps',
@@ -71,7 +81,7 @@ def make_argument_parser():
         metavar='MAX HSPS',
         help="Max hsps to keep per hit, defaults to '3'"
     )
-    config.add_argument(
+    blast_opts.add_argument(
         '-i',
         '--identity',
         dest='identity',
@@ -81,7 +91,7 @@ def make_argument_parser():
         metavar='PERCENT IDENTITY',
         help="Percent identity to match, defaults to '99'"
     )
-    config.add_argument(
+    blast_opts.add_argument(
         '-k',
         '--keep-query',
         dest='keep_query',
@@ -102,7 +112,20 @@ def make_argument_parser():
     )
     #   BLAST subparser
     blast = subparsers.add_parser('BLAST')
-    blast_modes = blast.add_mutually_exclusive_group(required=True)
+    blast_in = blast.add_argument_group(
+        title='Input options',
+        description="Choose to input a BLAST config or XML file"
+    )
+    blast_modes = blast_in.add_mutually_exclusive_group(required=True)
+    blast_modes.add_argument(
+        '-c',
+        '--config',
+        dest='config',
+        type=str,
+        default=None,
+        metavar='BLAST CONFIG FILE',
+        help="Configuration file for running BLAST, incompatible with '-x | --xml'"
+    )
     blast_modes.add_argument(
         '-x',
         '--xml',
@@ -112,15 +135,6 @@ def make_argument_parser():
         required=False,
         metavar='BLAST XML RESULTS',
         help="Optional BLAST XML results already found, incompatible with '-c | --config'"
-    )
-    blast_modes.add_argument(
-        '-c',
-        '--config',
-        dest='config',
-        type=str,
-        default=None,
-        metavar='BLAST CONFIG FILE',
-        help="Configuration file for running BLAST, incompatible with '-x | --xml'"
     )
     blast.add_argument(
         '-l',
@@ -132,7 +146,11 @@ def make_argument_parser():
         metavar='ILLUMINA LOOKUP TABLE',
         help="SNP lookup table in Illumina format"
     )
-    blast.add_argument(
+    blast_out = blast.add_argument_group(
+        title='Output options',
+        description="Control the output of " + os.path.basename(sys.argv[0]) + " " + sys.argv[1]
+    )
+    blast_out.add_argument(
         '-o',
         '--outname',
         dest='outname',
@@ -142,7 +160,7 @@ def make_argument_parser():
         metavar='OUTPUT NAME',
         help="Name of output file, without suffix. Defaults to 'output'"
     )
-    blast.add_argument(
+    blast_out.add_argument(
         '-r',
         '--rank-snps',
         dest='rank',
@@ -154,7 +172,11 @@ def make_argument_parser():
     )
     #   Alignment subparser
     sam = subparsers.add_parser('SAM')
-    sam.add_argument(
+    sam_input = sam.add_argument_group(
+        title='Input options',
+        description="Choose a SAM file and reference FASTA file to find SNPs"
+    )
+    sam_input.add_argument(
         '-s',
         '--sam-file',
         dest='samfile',
@@ -164,7 +186,7 @@ def make_argument_parser():
         metavar='SAM FILE',
         help="SAM File with aligned SNP contextual sequences"
     )
-    sam.add_argument(
+    sam_input.add_argument(
         '-r',
         '--reference',
         dest='reference',
@@ -184,7 +206,11 @@ def make_argument_parser():
         metavar='ILLUMINA LOOKUP TABLE',
         help="SNP lookup table in Illumina format"
     )
-    sam.add_argument(
+    sam_out = sam.add_argument_group(
+        title='Output options',
+        description="Control the output of " + os.path.basename(sys.argv[0]) + " " + sys.argv[1]
+    )
+    sam_out.add_argument(
         '-o',
         '--outname',
         dest='outname',
