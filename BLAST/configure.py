@@ -11,7 +11,7 @@ CONFIG_VALUES = {
     'subject' : 'str',
     'database' : 'str',
     'evalue' : 'float',
-    'max_seqs' : 'int',
+    'max_hits' : 'int',
     'max_hsps' : 'int',
     'identity' : 'int',
     'keep_query' : 'bool'

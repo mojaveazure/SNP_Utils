@@ -63,13 +63,13 @@ def make_argument_parser():
     )
     blast_opts.add_argument(
         '-s',
-        '--max-seqs',
-        dest='max_seqs',
+        '--max-hits',
+        dest='max_hits',
         type=int,
         default=3,
         required=False,
-        metavar='MAX SEQS',
-        help="Max seqs to keep per query, defaults to '3'"
+        metavar='MAX HITS',
+        help="Max hits to keep per query, defaults to '3'"
     )
     blast_opts.add_argument(
         '-m',

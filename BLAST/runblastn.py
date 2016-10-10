@@ -55,7 +55,7 @@ def run_blastn(cline, keep_query=True):
         assert isinstance(cline, NcbiblastnCommandline)
         assert isinstance(keep_query, bool)
     except AssertionError:
-        raise
+        raise TypeError
     print(cline, file=sys.stderr)
     cline()
     if not os.path.exists(cline.out):
@@ -65,18 +65,18 @@ def run_blastn(cline, keep_query=True):
 
 
 @run_blastn.add
-def run_blastn(query, subject, evalue, max_seqs, max_hsps, identity, keep_query):
+def run_blastn(query, subject, evalue, max_hits, max_hsps, identity, keep_query):
     """Run BLASTn"""
     try:
         assert isinstance(query, str)
         assert isinstance(subject, str)
         assert isinstance(evalue, float)
-        assert isinstance(max_seqs, int)
+        assert isinstance(max_hits, int)
         assert isinstance(max_hsps, int)
         assert isinstance(identity, int)
         assert isinstance(keep_query, bool)
     except AssertionError:
-        raise
+        raise TypeError
     #   Create an output name
     print("Running BLAST against subject:", subject, file=sys.stderr)
     query_base = os.path.basename(os.path.splitext(query)[0])
@@ -88,7 +88,7 @@ def run_blastn(query, subject, evalue, max_seqs, max_hsps, identity, keep_query)
         subject=subject,
         evalue=evalue,
         outfmt=5,
-        max_target_seqs=max_seqs,
+        max_target_seqs=max_hits,
         max_hsps=max_hsps,
         perc_identity=identity,
         out=blast_out
@@ -99,18 +99,18 @@ def run_blastn(query, subject, evalue, max_seqs, max_hsps, identity, keep_query)
 
 
 @run_blastn.add
-def run_blastn(query, database, evalue, max_seqs, max_hsps, identity, keep_query):
+def run_blastn(query, database, evalue, max_hits, max_hsps, identity, keep_query):
     """Run BLASTn"""
     try:
         assert isinstance(query, str)
         assert isinstance(database, str)
         assert isinstance(evalue, float)
-        assert isinstance(max_seqs, int)
+        assert isinstance(max_hits, int)
         assert isinstance(max_hsps, int)
         assert isinstance(identity, int)
         assert isinstance(keep_query, bool)
     except AssertionError:
-        raise
+        raise TypeError
     #   Create an output name
     print("Running BLAST with database:", database, file=sys.stderr)
     query_base = os.path.basename(os.path.splitext(query)[0])
@@ -122,7 +122,7 @@ def run_blastn(query, database, evalue, max_seqs, max_hsps, identity, keep_query
         db=database,
         evalue=evalue,
         outfmt=5,
-        max_target_seqs=max_seqs,
+        max_target_seqs=max_hits,
         max_hsps=max_hsps,
         perc_identity=identity,
         out=blast_out
@@ -139,12 +139,12 @@ def run_blastn(bconf):
         assert isinstance(bconf, dict)
         query = bconf['query']
         evalue = bconf['evalue']
-        max_seqs = bconf['max_seqs']
+        max_hits = bconf['max_hits']
         max_hsps = bconf['max_hsps']
         identity = bconf['identity']
         keep_query = bconf['keep_query']
     except AssertionError:
-        raise
+        raise TypeError
     except KeyError:
         raise MalformedConfigError
     try:
@@ -155,7 +155,7 @@ def run_blastn(bconf):
                 query=query,
                 database=database,
                 evalue=evalue,
-                max_seqs=max_seqs,
+                max_hits=max_hits,
                 max_hsps=max_hsps,
                 identity=identity,
                 keep_query=keep_query
@@ -166,7 +166,7 @@ def run_blastn(bconf):
                 query=query,
                 subject=subject,
                 evalue=evalue,
-                max_seqs=max_seqs,
+                max_hits=max_hits,
                 max_hsps=max_hsps,
                 identity=identity,
                 keep_query=keep_query
@@ -186,7 +186,7 @@ def write_fasta(lookup_dict, query):
         for lookup in lookup_dict.values():
             assert isinstance(lookup, snp.Lookup)
     except AssertionError:
-        raise
+        raise TypeError
     query_base = os.path.basename(os.path.splitext(query)[0])
     fasta_file = os.getcwd() + '/' + query_base + '.fasta'
     with open(fasta_file, 'w') as f:
