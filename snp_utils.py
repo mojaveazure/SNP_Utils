@@ -11,6 +11,7 @@ try:
     from Utilities import utilities
     from Objects import snp
     from Objects import blast
+    from Objects import alignment
     from Objects.snp import NotABaseError
     from Objects.snp import NoMatchError
     from Objects.blast import NoSNPError
@@ -107,6 +108,49 @@ def blast_based(args, lookup_dict):
     return(snp_list, no_hits)
 
 
+#   Alignment-blast_based
+def alignment_based(args, lookup_dict):
+    try:
+        assert isinstance(args, dict)
+        assert isinstance(lookup_dict, dict)
+    except AssertionError:
+        raise TypeError
+    alignment_dict = dict()
+    no_hits = set()
+    snp_list = list()
+    try:
+        #   Read in the reference FASTA file
+        print("Reading in reference FASTA", args['reference'], "This might take a while...", file=sys.stderr)
+        reference = SeqIO.to_dict(SeqIO.parse(args['reference'], 'fasta'))
+        #   Read in the SAM alignment
+        print("Reading in SAM file", args['samfile'], file=sys.stderr)
+        with open(args['samfile'], 'r') as s:
+            for line in s:
+                if line.startswith('@'):
+                    continue
+                else:
+                    a = alignment.Alignment(line)
+                    if a.check_flag():
+                        alignment_dict[a.get_name()] = a
+    except FileNotFoundError as error:
+        sys.exit("Failed to find " + error.filename)
+    for snpid in lookup_dict:
+        if snpid in alignment_dict.keys() and alignment_dict[snpid].get_contig() is not '*':
+            s = snp.SNP(
+                lookup=lookup_dict[snpid],
+                alignment=alignment_dict[snpid],
+                reference=reference
+            )
+            snp_list.append(s)
+        else:
+            print("No map for", snpid)
+            no_hits.add(snpid)
+    if len(snp_list) < 1:
+        sys.exit("Failed to find any SNPs in " + args['samfile'] + " that were listed in " + args['lookup'])
+    no_hits -= {s.get_snpid() for s in snp_list}
+    return (snp_list, no_hits)
+
+
 #   Write the output files
 def write_outputs(args, snp_filter, masked_filter, no_snps, method):
     """Write the output files"""
@@ -175,7 +219,7 @@ def main():
             snp_list, no_snps = blast_based(args, lookup_dict)
         elif args['method'] == 'SAM':
             method = 'SAM'
-            raise NotImplementedError("Finding SNPs using a SAM file is not yet implemented")
+            snp_list, no_snps = alignment_based(args, lookup_dict)
         masked = filter(lambda s: s.check_masked(), snp_list)
         proper_snps = filter(lambda s: not s.check_masked(), snp_list)
         write_outputs(args, proper_snps, masked, list(no_snps), method)

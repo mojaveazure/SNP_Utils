@@ -18,6 +18,10 @@ class Alignment(object):
     """
     _CIGAR = re.compile(u'([0-9]+[A-Z]+)') # Regex to break the CIGAR string into component codes using re.findall()
     def __init__(self, line):
+        try:
+            assert isinstance(line, str)
+        except AssertionError:
+            raise TypeError
         #   There's only some information that we need for our alignment, everything else is forgotten
         split_line = line.strip().split() # Remove leading and trailing whitespace, then split the line by column
         self._qname = split_line[0] # First column in a SAM file
