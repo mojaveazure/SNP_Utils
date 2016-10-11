@@ -79,7 +79,6 @@ def blast_based(args, lookup_dict):
             except TypeError:
                 print('No HSPs for', snpid, 'hit number:', hit_num, file=sys.stderr)
                 no_hits.add(snpid)
-                continue
     for hsp in hsps:
         snpid = hsp.get_name()
         lookup = lookup_dict[snpid]
@@ -96,7 +95,6 @@ def blast_based(args, lookup_dict):
         final_hsps = blast.rank_hsps(hsps=hsps)
     else:
         final_hsps = {h.get_name() : h for h in hsps}
-    hit_snps = set(final_hsps.keys())
     for hsps in final_hsps.values():
         for hsp in hsps:
             try:
@@ -104,6 +102,7 @@ def blast_based(args, lookup_dict):
             except NoSNPError:
                 print('No SNP for', hsp, file=sys.stderr)
                 no_hits.add(hsp.get_name())
+    hit_snps = {s.get_snpid() for s in snp_list}
     no_hits -= hit_snps
     return(snp_list, no_hits)
 
@@ -178,7 +177,8 @@ def write_outputs(args, snp_filter, masked_filter, no_snps, method):
                 o.write(s.format_vcf())
                 o.write('\n')
     print("Removing masked SNPs that were actually found", file=sys.stderr)
-    masked_list = utilities.deduplicate_list(list(masked_filter), snp_list)
+    # masked_list = utilities.deduplicate_list(list(masked_filter), snp_list)
+    masked_list = list(masked_filter)
     if len(masked_list) > 0:
         print("Writing", len(masked_list), "masked SNPs to", maskedfile, file=sys.stderr)
         with open(maskedfile, 'w') as m:
@@ -186,14 +186,20 @@ def write_outputs(args, snp_filter, masked_filter, no_snps, method):
             for s in masked_list:
                 m.write(s.format_vcf())
                 m.write('\n')
-    print("Removing failed SNPs that were actually found", file=sys.stderr)
-    no_snps_deduped_parital = utilities.deduplicate_list(no_snps, [s.get_snpid() for s in snp_list])
-    print("Removing failed SNPs that were masked", file=sys.stderr)
-    no_snps_deduped = utilities.deduplicate_list(no_snps_deduped_parital, [s.get_snpid() for s in masked_list])
-    if len(no_snps_deduped) > 0:
-        print("Writing", len(no_snps_deduped), "failed SNPs to", failedfile, file=sys.stderr)
+    # print("Removing failed SNPs that were actually found", file=sys.stderr)
+    # no_snps_deduped_parital = utilities.deduplicate_list(no_snps, [s.get_snpid() for s in snp_list])
+    # print("Removing failed SNPs that were masked", file=sys.stderr)
+    # no_snps_deduped = utilities.deduplicate_list(no_snps_deduped_parital, [s.get_snpid() for s in masked_list])
+    # if len(no_snps_deduped) > 0:
+    #     print("Writing", len(no_snps_deduped), "failed SNPs to", failedfile, file=sys.stderr)
+    #     with open(failedfile, 'w') as f:
+    #         for s in no_snps_deduped:
+    #             f.write(s)
+    #             f.write('\n')
+    if len(no_snps) > 0:
+        print("Writing", len(no_snps), "failed SNPs to", failedfile, file=sys.stderr)
         with open(failedfile, 'w') as f:
-            for s in no_snps_deduped:
+            for s in sorted(no_snps):
                 f.write(s)
                 f.write('\n')
 
