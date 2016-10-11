@@ -73,7 +73,7 @@ def run_blastn(query, subject, evalue, max_hits, max_hsps, identity, keep_query)
         assert isinstance(evalue, float)
         assert isinstance(max_hits, int)
         assert isinstance(max_hsps, int)
-        assert isinstance(identity, int)
+        assert isinstance(identity, float)
         assert isinstance(keep_query, bool)
     except AssertionError:
         raise TypeError
@@ -107,7 +107,7 @@ def run_blastn(query, database, evalue, max_hits, max_hsps, identity, keep_query
         assert isinstance(evalue, float)
         assert isinstance(max_hits, int)
         assert isinstance(max_hsps, int)
-        assert isinstance(identity, int)
+        assert isinstance(identity, float)
         assert isinstance(keep_query, bool)
     except AssertionError:
         raise TypeError
