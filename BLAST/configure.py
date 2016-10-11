@@ -27,9 +27,11 @@ def make_config(args):
             config.set(SECTION_NAME, option, str(args[option]))
         except KeyError:
             continue
+        else:
+            print("Setting option", option, "with value", args[option], file=sys.stderr)
     with open(args['outfile'], 'w') as configfile:
         config.write(configfile)
-    print("Config file can be found at", args['outfile'], file=sys.stderr)
+    print("\nConfig file can be found at", args['outfile'], file=sys.stderr)
 
 
 #   Parse a configuration file
@@ -54,4 +56,6 @@ def parse_config(config_file):
                 bconf[option] = config.get(SECTION_NAME, option)
         except configparser.NoOptionError:
             continue
+        else:
+            print(option, "set to", bconf[option], file=sys.stderr)
     return bconf
