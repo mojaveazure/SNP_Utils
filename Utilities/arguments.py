@@ -148,7 +148,7 @@ def make_argument_parser():
     )
     blast_out = blast.add_argument_group(
         title='Output options',
-        description="Control the output of " + os.path.basename(sys.argv[0]) + " " + sys.argv[1]
+        description="Control the output of " + os.path.basename(sys.argv[0])
     )
     blast_out.add_argument(
         '-o',
@@ -208,7 +208,7 @@ def make_argument_parser():
     )
     sam_out = sam.add_argument_group(
         title='Output options',
-        description="Control the output of " + os.path.basename(sys.argv[0]) + " " + sys.argv[1]
+        description="Control the output of " + os.path.basename(sys.argv[0])
     )
     sam_out.add_argument(
         '-o',
