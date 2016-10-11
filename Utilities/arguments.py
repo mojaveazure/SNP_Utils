@@ -180,7 +180,7 @@ def make_argument_parser():
         '-s',
         '--sam-file',
         dest='samfile',
-        type=argparse.FileType('r'),
+        type=str,
         default=None,
         required=True,
         metavar='SAM FILE',
