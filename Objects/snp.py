@@ -114,7 +114,7 @@ class SNP(object):
     def _calculate_position(self, lookup, alignment):
         """Calculate the position of the SNP in the reference sequence"""
         index = 0 # Index of our split CIGAR string
-        if alignment.get_rc() or lookup.get_rc(): # If we're reverse complementing
+        if alignment.get_rc(): # If we're reverse complementing
             qpos = lookup.get_reverse_position() - 1 # Start with the reverse position of the SNP, must subtract one
         else: # Otherwise
             qpos = lookup.get_forward_position() # Start with the forward posittion
