@@ -161,7 +161,7 @@ def write_outputs(args, snp_filter, masked_filter, no_snps, method):
         assert isinstance(method, str)
     except AssertionError:
         raise TypeError
-    header = '##fileformat=VCFv4.2\n##INFO<ID=s,Number=1,Type=Flag,Description="Variant is calculated from %s">\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n' % method
+    header = '##fileformat=VCFv4.2\n##INFO<ID=s,Number=0,Type=Flag,Description="Variant is calculated from %s">\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n' % method
     outfile = args['outname'] + '.vcf'
     maskedfile = args['outname'] + '_masked.vcf'
     failedfile = args['outname'] + '_failed.log'
