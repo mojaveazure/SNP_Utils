@@ -12,8 +12,8 @@
 
 # Ignore FASTA files
 ####################
-*.fasta
-*.fa
+*.fasta*
+*.fa*
 
 # Ignore log files
 ##################
