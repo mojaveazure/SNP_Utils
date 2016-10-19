@@ -18,19 +18,21 @@ except ImportError as error:
     sys.exit("Please install " + error.name)
 
 
-VALS = [
-        'Hsp_bit-score',
-        'Hsp_evalue',
-        'Hsp_hit-from',
-        'Hsp_hit-to',
-        'Hsp_hit-frame',
-        'Hsp_identity',
-        'Hsp_align-len',
-        'Hsp_qseq',
-        'Hsp_hseq'
-    ]
+#   A tuple of values that need to be parsed for each HSP
+VALS = (
+    'Hsp_bit-score',
+    'Hsp_evalue',
+    'Hsp_hit-from',
+    'Hsp_hit-to',
+    'Hsp_hit-frame',
+    'Hsp_identity',
+    'Hsp_align-len',
+    'Hsp_qseq',
+    'Hsp_hseq'
+)
 
-NO_HIT_MESSAGE='No hits found'
+#   The message found in a BLAST iteration if no hits were found
+NO_HIT_MESSAGE = 'No hits found'
 
 #   An error I probably overuse...
 class NoSNPError(Exception):
@@ -41,22 +43,21 @@ class NoSNPError(Exception):
 class Hsp(object):
     """This is a class for a BLAST Hsp
     It continas the following information:
-        Chromosome name
-        Query name
-        Hsp e-value
-        Query sequence
-        Subject sequence
-        Hsp start relative to subject
-        Hsp end relative to subject
-        Subject strand (forward or reverse)
-        Hsp bit-score
-        Identity
-        Aligned length
+        Chromosome name                     (str)
+        Query name                          (str)
+        Hsp e-value                         (float)
+        Query sequence                      (str)
+        Subject sequence                    (str)
+        Hsp start relative to subject       (int)
+        Hsp end relative to subject         (int)
+        Subject strand (forward or reverse) [1 | -1]
+        Hsp bit-score                       (int or float)
+        Identity                            (int)
+        Aligned length                      (int)
         SNP Position relative to subject (once calcualted with Hsp.get_snp_position())
         """
     def __init__(self, chrom, name, evalue, qseq, hseq, hstart, hend, hstrand, bit_score, identity, aligned_length):
         try:
-            assert isinstance(bit_score, int) or isinstance(bit_score, float)
             assert isinstance(chrom, str)
             assert isinstance(name, str)
             assert isinstance(evalue, float)
@@ -65,6 +66,7 @@ class Hsp(object):
             assert isinstance(hstart, int)
             assert isinstance(hend, int)
             assert isinstance(hstrand, int)
+            assert isinstance(bit_score, int) or isinstance(bit_score, float)
             assert isinstance(identity, int)
             assert isinstance(aligned_length, int)
         except AssertionError:
@@ -148,11 +150,11 @@ class Hsp(object):
 
     def get_snp_position(self, query_snp, expected):
         """Calculate the SNP position relative to reference"""
-        try:
+        try: # Type checking
             assert isinstance(expected, int)
         except AssertionError:
             raise TypeError
-        try:
+        try: # Value checking
             assert len(query_snp) is 1
         except AssertionError:
             raise ValueError
@@ -208,7 +210,7 @@ class Hsp(object):
     @overload
     def add_snp(self, this_snp):
         """Add a SNP to our Hsp"""
-        try:
+        try: # Type checking
             assert isinstance(this_snp, snp.SNP)
         except AssertionError:
             raise TypeError
@@ -217,11 +219,11 @@ class Hsp(object):
     @add_snp.add
     def add_snp(self, lookup):
         """Add a SNP to our HSP"""
-        try:
+        try: # Type checking
             assert isinstance(lookup, snp.Lookup)
         except AssertionError:
             raise TypeError
-        try:
+        try: # Value checking
             assert self._name == lookup.get_snpid()
             s = snp.SNP(lookup=lookup, hsp=self)
             self.add_snp(this_snp=s)
@@ -239,6 +241,7 @@ class Hsp(object):
 
 #   A function to get the value from a tag
 def get_value(tag, value):
+    """Get the value from an element.Tag object"""
     try:
         assert isinstance(tag, element.Tag)
         return tag.findChild(value).text
@@ -250,10 +253,12 @@ def get_value(tag, value):
 
 #   A function to parse the HSP section of a BLAST XML file
 def parse_hsp(hsp):
-    try:
+    """Parse the HSP section of a BLAST XML result"""
+    try: # Type checking
         assert isinstance(hsp, element.Tag)
     except AssertionError:
         raise TypeError
+    #   Ensure that our HSP has at least one mismatch
     if hsp.findChild('Hsp_midline').text.count(' ') < 1:
         raise NoSNPError
     hsp_vals = map(get_value, repeat(hsp, len(VALS)), VALS)
@@ -262,6 +267,7 @@ def parse_hsp(hsp):
 
 #   A function to parse the Hit section of a BLAST XML file
 def parse_hit(snpid, hit):
+    """Parse the Hit section of a BLAST XML result"""
     try:
         assert isinstance(snpid, str)
         assert isinstance(hit, element.Tag)
@@ -300,17 +306,20 @@ def parse_hit(snpid, hit):
 
 #   A function to rank HSPs
 def rank_hsps(hsps):
+    """Rank HSPs and take the highest scoring (smallest) HSP(s)"""
     try:
         assert isinstance(hsps, list) or isinstance(hsps, tuple)
         for h in hsps:
             assert isinstance(h, Hsp)
     except AssertionError:
         raise TypeError
+    #   Sort our HSPs into a dictionary
     hsp_dict = {}
     for h in hsps:
         if h.get_name() in hsp_dict.keys():
             hsp_dict[h.get_name()].append(h)
         else:
             hsp_dict[h.get_name()] = [h]
+    #   Rank-remove our HSPs
     hsps_ranked = {name : rank_remove(hsp_list, lowest=True) for name, hsp_list in hsp_dict.items()}
     return hsps_ranked
