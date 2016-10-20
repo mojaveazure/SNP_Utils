@@ -8,8 +8,8 @@ if sys.version_info.major is not 3:
 
 from itertools import repeat
 
-from . import snp
 from Utilities.utilities import rank_remove
+from . import snp
 
 try:
     from overload import overload
@@ -56,6 +56,7 @@ class Hsp(object):
         Aligned length                      (int)
         SNP Position relative to subject (once calcualted with Hsp.get_snp_position())
         """
+
     def __init__(self, chrom, name, evalue, qseq, hseq, hstart, hend, hstrand, bit_score, identity, aligned_length):
         try:
             assert isinstance(chrom, str)
@@ -66,7 +67,7 @@ class Hsp(object):
             assert isinstance(hstart, int)
             assert isinstance(hend, int)
             assert isinstance(hstrand, int)
-            assert isinstance(bit_score, int) or isinstance(bit_score, float)
+            assert isinstance(bit_score, (int, float))
             assert isinstance(identity, int)
             assert isinstance(aligned_length, int)
         except AssertionError:
@@ -308,7 +309,7 @@ def parse_hit(snpid, hit):
 def rank_hsps(hsps):
     """Rank HSPs and take the highest scoring (smallest) HSP(s)"""
     try:
-        assert isinstance(hsps, list) or isinstance(hsps, tuple)
+        assert isinstance(hsps, (list, tuple))
         for h in hsps:
             assert isinstance(h, Hsp)
     except AssertionError:
