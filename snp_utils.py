@@ -9,6 +9,7 @@ if sys.version_info.major is not 3:
 try:
     from Utilities import arguments
     from Utilities import utilities
+    from Utilities.utilities import INFO
     from Objects import snp
     from Objects import blast
     from Objects import alignment
@@ -21,6 +22,9 @@ except ImportError:
     sys.exit("Please make sure you are in the 'SNP_Utils' directory to load custom modules")
 
 
+from copy import deepcopy
+from itertools import product
+
 try:
     from bs4 import BeautifulSoup
     from bs4 import FeatureNotFound
@@ -31,7 +35,8 @@ except ImportError as error:
 
 #   BLAST-based
 def blast_based(args, lookup_dict):
-    try:
+    """Run SNP_Utils using a BLAST-based method"""
+    try: # Type checking
         assert isinstance(args, dict)
         assert isinstance(lookup_dict, dict)
     except AssertionError:
@@ -58,8 +63,11 @@ def blast_based(args, lookup_dict):
     except FeatureNotFound:
         sys.exit("Please install 'lxml' to properly parse the BLAST results")
     no_hits = set() # A set to hold no hits
-    snp_list = []
+    snp_list = [] # A list to hold all SNPs found
     hsps = [] # A list of HSPs from the XML file
+    ref_gen = blast.get_value(tag=blast_soup, value='BlastOutput_db')
+    if not ref_gen:
+        ref_gen = blast.get_value(tag=blast_soup, value='BlastOutput_version')
     for query in blast_soup.findAll('Iteration'):
         snpid = blast.get_value(tag=query, value='Iteration_query-def')
         #   Ask if no hits were found
@@ -91,7 +99,7 @@ def blast_based(args, lookup_dict):
     #   Close the XML file
     blast_xml.close()
     #   Rank, if asked for
-    if args['rank']:
+    if 'rank' in args.keys():
         final_hsps = blast.rank_hsps(hsps=hsps)
     else:
         final_hsps = {h.get_name() : h for h in hsps}
@@ -104,12 +112,13 @@ def blast_based(args, lookup_dict):
                 no_hits.add(hsp.get_name())
     hit_snps = {s.get_snpid() for s in snp_list}
     no_hits -= hit_snps
-    return(snp_list, no_hits)
+    return(snp_list, no_hits, ref_gen)
 
 
 #   Alignment-blast_based
 def alignment_based(args, lookup_dict):
-    try:
+    """Run SNP_Utils using a SAM file"""
+    try: # Type checking
         assert isinstance(args, dict)
         assert isinstance(lookup_dict, dict)
     except AssertionError:
@@ -151,17 +160,18 @@ def alignment_based(args, lookup_dict):
 
 
 #   Write the output files
-def write_outputs(args, snp_filter, masked_filter, no_snps, method):
+def write_outputs(args, snp_filter, masked_filter, no_snps, ref_gen, vcf_info):
     """Write the output files"""
     try:
         assert isinstance(args, dict)
-        assert isinstance(snp_filter, filter)
-        assert isinstance(masked_filter, filter)
+        assert isinstance(snp_filter, (filter, list, tuple))
+        assert isinstance(masked_filter, (filter, list, tuple))
         assert isinstance(no_snps, list)
-        assert isinstance(method, str)
+        assert isinstance(ref_gen, str)
+        assert isinstance(vcf_info, (list, tuple))
     except AssertionError:
         raise TypeError
-    header = '##fileformat=VCFv4.2\n##INFO<ID=s,Number=0,Type=Flag,Description="Variant is calculated from %s">\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n' % method
+    header = utilities.vcf_header(ref_gen, vcf_info)
     outfile = args['outname'] + '.vcf'
     maskedfile = args['outname'] + '_masked.vcf'
     failedfile = args['outname'] + '_failed.log'
@@ -173,29 +183,20 @@ def write_outputs(args, snp_filter, masked_filter, no_snps, method):
         print("Writing", len(snp_list), "SNPs to", outfile, file=sys.stderr)
         with open(outfile, 'w') as o:
             o.write(header)
+            o.write('\n')
             for s in snp_list:
                 o.write(s.format_vcf())
                 o.write('\n')
     print("Removing masked SNPs that were actually found", file=sys.stderr)
-    # masked_list = utilities.deduplicate_list(list(masked_filter), snp_list)
     masked_list = list(masked_filter)
     if len(masked_list) > 0:
         print("Writing", len(masked_list), "masked SNPs to", maskedfile, file=sys.stderr)
         with open(maskedfile, 'w') as m:
             m.write(header)
+            m.write('\n')
             for s in masked_list:
                 m.write(s.format_vcf())
                 m.write('\n')
-    # print("Removing failed SNPs that were actually found", file=sys.stderr)
-    # no_snps_deduped_parital = utilities.deduplicate_list(no_snps, [s.get_snpid() for s in snp_list])
-    # print("Removing failed SNPs that were masked", file=sys.stderr)
-    # no_snps_deduped = utilities.deduplicate_list(no_snps_deduped_parital, [s.get_snpid() for s in masked_list])
-    # if len(no_snps_deduped) > 0:
-    #     print("Writing", len(no_snps_deduped), "failed SNPs to", failedfile, file=sys.stderr)
-    #     with open(failedfile, 'w') as f:
-    #         for s in no_snps_deduped:
-    #             f.write(s)
-    #             f.write('\n')
     if len(no_snps) > 0:
         print("Writing", len(no_snps), "failed SNPs to", failedfile, file=sys.stderr)
         with open(failedfile, 'w') as f:
@@ -215,20 +216,58 @@ def main():
         configure.make_config(args)
     else:
         lookup_dict = {}
+        vcf_info = []
         with open(args['lookup'], 'r') as lk:
+            print("Reading in lookup table", args['lookup'], file=sys.stderr)
             for line in lk:
                 split = line.strip().split()
                 l = snp.Lookup(split[0], split[1])
                 lookup_dict[l.get_snpid()] = l
         if args['method'] == 'BLAST':
             method = 'BLAST'
-            snp_list, no_snps = blast_based(args, lookup_dict)
+            snp_list, no_snps, ref_gen = blast_based(args, lookup_dict)
+            vcf_info.append(INFO(infoid='B', number=0, infotype='Flag', description='Variant Calculated from BLAST'))
         elif args['method'] == 'SAM':
             method = 'SAM'
+            ref_gen = args['reference']
             snp_list, no_snps = alignment_based(args, lookup_dict)
+            vcf_info.append(INFO(infoid='S', number=0, infotype='Flag', description='Variant Calculated from SAM'))
         masked = filter(lambda s: s.check_masked(), snp_list)
         proper_snps = filter(lambda s: not s.check_masked(), snp_list)
-        write_outputs(args, proper_snps, masked, list(no_snps), method)
+        if 'map' in args.keys():
+            print("Using map", args['map'], file=sys.stderr)
+            #   Create holding dictionaries and list
+            snp_dict = dict()
+            map_dict = dict()
+            map_snp = list()
+            #   Add new INFO fields to the VCF header
+            vcf_info.append(INFO(infoid='ALTCHR', number='.', infotype='String', description='Alternate chromosomal positions'))
+            vcf_info.append(INFO(infoid='ALTPOS', number='.', infotype='String', description='Alternate posititions'))
+            with open(args['map'], 'r') as mf:
+                for line in mf:
+                    try:
+                        split = line.strip().split()
+                        m = snp.Map(
+                            chrom=split[0],
+                            name=split[1],
+                            map_distance=float(split[2]),
+                            physical_position=int(split[3])
+                        )
+                        map_dict[m.get_name()] = m
+                    except IndexError:
+                        print("Failed line:", line, file=sys.stderr)
+            for proper in proper_snps:
+                if proper.get_snpid() in snp_dict:
+                    snp_dict[proper.get_snpid()].append(proper)
+                else:
+                    snp_dict[proper.get_snpid()] = [proper]
+            for snpid, snp_list in snp_dict.items():
+                if len(snp_list) > 1 and snpid in map_dict.keys():
+                    map_snp += snp.filter_snps(snp_list=snp_list, genetic_map=map_dict[snpid])
+                else:
+                    map_snp += snp_list
+            proper_snps = deepcopy(x=map_snp)
+        write_outputs(args, proper_snps, masked, list(no_snps), ref_gen, vcf_info)
 
 
 if __name__ == '__main__':

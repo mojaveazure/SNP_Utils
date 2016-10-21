@@ -136,7 +136,11 @@ def make_argument_parser():
         metavar='BLAST XML RESULTS',
         help="Optional BLAST XML results already found, incompatible with '-c | --config'"
     )
-    blast.add_argument(
+    blast_lookup = blast.add_argument_group(
+        title='Lookup table and genetic map',
+        description="Specify the path to the Illumina lookup table and an optional genetic map"
+    )
+    blast_lookup.add_argument(
         '-l',
         '--lookup',
         dest='lookup',
@@ -145,6 +149,16 @@ def make_argument_parser():
         required=True,
         metavar='ILLUMINA LOOKUP TABLE',
         help="SNP lookup table in Illumina format"
+    )
+    blast_lookup.add_argument(
+        '-m',
+        '--genetic-map',
+        dest='map',
+        type=str,
+        default=None,
+        required=False,
+        metavar='GENETIC MAP',
+        help="Genetic map in Plink 1.9 MAP format"
     )
     blast_out = blast.add_argument_group(
         title='Output options',
@@ -196,7 +210,11 @@ def make_argument_parser():
         metavar='REFERENCE SEQUENCE',
         help="Reference sequence in FASTA format"
     )
-    sam.add_argument(
+    sam_lookup = sam.add_argument_group(
+        title='Lookup table and genetic map',
+        description="Specify the path to the Illumina lookup table and an optional genetic map"
+    )
+    sam_lookup.add_argument(
         '-l',
         '--lookup',
         dest='lookup',
@@ -205,6 +223,16 @@ def make_argument_parser():
         required=True,
         metavar='ILLUMINA LOOKUP TABLE',
         help="SNP lookup table in Illumina format"
+    )
+    sam_lookup.add_argument(
+        '-m',
+        '--genetic-map',
+        dest='map',
+        type=str,
+        default=None,
+        required=False,
+        metavar='GENTIC MAP',
+        help="Genetic map in Plink 1.9 MAP format"
     )
     sam_out = sam.add_argument_group(
         title='Output options',

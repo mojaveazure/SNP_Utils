@@ -7,14 +7,14 @@ if sys.version_info.major is not 3:
 
 import re
 
-from . alignment import Alignment
 from . import blast
 from . blast import NoSNPError
+from . alignment import Alignment
 
 try:
     from overload import overload
 except ImportError as error:
-    print("Please install " + error.name)
+    sys.exit("Please install " + error.name)
 
 
 #   An error to say we weren't given a base
@@ -61,6 +61,8 @@ class SNP(object):
         self._position = None
         self._reference = None
         self._alternate = None
+        self._flags = list()
+        self._info = dict()
 
     @__init__.add
     def __init__(self, lookup, alignment, reference):
@@ -74,6 +76,7 @@ class SNP(object):
             raise NoMatchError
         #   The contig is found in the alignment
         self._contig = alignment.get_contig()
+        self._flags.append('S')
         #   Get the rest of the information
         self._calculate_position(lookup, alignment) # True SNP position
         self._find_states(lookup, alignment, reference) # Reference and alternate states
@@ -90,6 +93,7 @@ class SNP(object):
         #   The contig and SNP position are found in the hsp
         self._contig = hsp.get_chrom()
         self._position = hsp.get_snp_position(lookup.get_code(), lookup.get_forward_position())
+        self._flags.append('B')
         #   Get the rest of the information
         self._find_states(lookup, hsp) # Reference and alternate states
 
@@ -98,9 +102,11 @@ class SNP(object):
 
     def __eq__(self, other):
         if isinstance(other, SNP):
-            return self._snpid == other._snpid
+            return self._snpid == other._snpid and self._contig == other._contig and self._position == other._position
+        elif isinstance(other, Map):
+            return self._snpid == other.get_name() and self._contig == other.get_chrom()
         elif isinstance(other, Lookup):
-            return self._snpid == other._snpid and self._alternate == other.get_alternate(self._reference) and self._alternate != 'N'
+            return self._snpid == other.get_snpid() and self._alternate == other.get_alternate(self._reference) and self._alternate != 'N'
         elif isinstance(other, str):
             return self._snpid == other
         elif isinstance(other, int):
@@ -182,9 +188,31 @@ class SNP(object):
         """Check to see if our alternate allele is masked"""
         return self._alternate == 'N'
 
+    def add_flag(self, flag):
+        """Add a flag to this SNP for VCF output"""
+        try:
+            assert isinstance(flag, str)
+        except AssertionError:
+            raise TypeError
+        self._flags.append(flag)
+
+    def add_info(self, key, value):
+        """Add information to this SNP for VCF output"""
+        try:
+            assert isinstance(key, str)
+            assert isinstance(value, (str, int))
+        except AssertionError:
+            raise TypeError
+        if key in self._info.keys():
+            self._info[key].append(str(value))
+        else:
+            self._info[key] = [str(value)]
+
     def format_vcf(self):
         """Format the information in VCF style"""
         #   Create a list of information for a VCF file
+        info = [key + '=' + ','.join(value) for key, value in self._info.items()]
+        info.extend(self._flags)
         vcf_line = [
             self._contig,
             str(self._position),
@@ -193,7 +221,7 @@ class SNP(object):
             self._alternate,
             '.',
             '.',
-            's'
+            ';'.join(info)
             ]
         return '\t'.join(vcf_line) # Join everything together with a tab
 
@@ -221,8 +249,13 @@ class Lookup(object):
     }
 
     def __init__(self, snpid, sequence):
-        #   We're given the SNP ID and sequence when making the object, everything else 
+        #   We're given the SNP ID and sequence when making the object, everything else
         #   can be made with _capture_snp() and _find_iupac()
+        try: # Type checking
+            assert isinstance(snpid, str)
+            assert isinstance(sequence, str)
+        except AssertionError:
+            raise TypeError
         self._snpid = snpid
         self._sequence = sequence
         self._forward_position = None
@@ -306,3 +339,123 @@ class Lookup(object):
             self._iupac
         ]
         return '\n'.join(fasta)
+
+
+#   A class for a Plink map file
+class Map(object):
+    """A class to hold Plink Map information
+    It holds the following information:
+        Map chromosome/contig
+        Map name/SNP ID
+        Genetic map distance
+        Physical position"""
+
+    def __init__(self, chrom, name, map_distance, physical_position):
+        try:
+            assert isinstance(chrom, (str, int))
+            assert isinstance(name, str)
+            assert isinstance(map_distance, float)
+            assert isinstance(physical_position, int)
+        except AssertionError:
+            raise TypeError
+        self._chrom = str(chrom)
+        self._name = name
+        self._mapd = map_distance
+        self._pos = physical_position
+
+    def __repr__(self):
+        return self._name
+
+    def __eq__(self, other):
+        if isinstance(other, SNP):
+            return self._chrom == other.get_chrom() and self._name == other.get_snpid()
+        elif isinstance(other, str):
+            return self._name == other
+        elif isinstance(other, float):
+            return self._mapd == other
+        elif isinstance(other, int):
+            return self._pos == other
+        else:
+            return NotImplemented
+
+    def __hash__(self):
+        return hash(self._name)
+
+    def get_chrom(self):
+        """Get the chromosome for this Map"""
+        return self._chrom
+
+    def get_name(self):
+        """Get the name of this Map"""
+        return self._name
+
+    def get_map_distance(self):
+        """Get the map distance of this Map"""
+        return self._mapd
+
+    def get_physical_position(self):
+        """Get the physical position of this Map"""
+        return self._pos
+
+    def format_map(self, map_distance=None, physical_position=None):
+        """Create a map file for this Map, will update the Map with new distances"""
+        try:
+            assert isinstance(map_distance, float) or isinstance(map_distance, None)
+            assert isinstance(physical_position, int) or isinstance(physical_position, None)
+        except AssertionError:
+            raise TypeError
+        if map_distance is not None:
+            self.update_distance(map_distance)
+        if physical_position is not None:
+            self.update_position(physical_position)
+        map_file = [
+            self._chrom,
+            self._name,
+            str(self._mapd),
+            str(self._pos)
+        ]
+        return '\t'.join(map_file)
+
+    def update_distance(self, map_distance):
+        """Update the genetic map distance for this Map"""
+        try:
+            assert isinstance(map_distance, float)
+        except AssertionError:
+            raise TypeError
+        self._mapd = map_distance
+
+    def update_position(self, physical_position):
+        """Update the physical position for this Map"""
+        try:
+            assert isinstance(physical_position, int)
+        except AssertionError:
+            raise TypeError
+        self._pos = physical_position
+
+
+#   Filter snps using a genetic map
+def filter_snps(snp_list, genetic_map):
+    """Filter a list or tuple of potential SNPs for the same marker by genetic map distance"""
+    try:
+        assert isinstance(snp_list, (list, tuple))
+        for snp in snp_list:
+            assert isinstance(snp, SNP)
+        assert isinstance(genetic_map, Map)
+    except AssertionError:
+        raise TypeError
+    try:
+        snpids = {snp.get_snpid() for snp in snp_list}
+        assert len(snpids) is 1
+        assert list(snpids)[0] == genetic_map
+    except AssertionError:
+        raise ValueError
+    mapped_snps = list(filter(lambda snp: snp == genetic_map, snp_list))
+    failed_snps = [snp for snp in snp_list if snp not in mapped_snps]
+    #   Document the failed SNPs in the mapped SNPs using SNP.add_info()
+    for failed in failed_snps:
+        fail_chr = failed.get_chrom()
+        fail_pos = failed.get_position()
+        for mapped in mapped_snps:
+            mapped.add_info(key='ALTCHR', value=fail_chr)
+            mapped.add_info(key='ALTPOS', value=fail_pos)
+    return mapped_snps
