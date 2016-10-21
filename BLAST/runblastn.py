@@ -62,6 +62,7 @@ def run_blastn(cline, keep_query=True):
         raise BLASTFailedError
     if not keep_query:
         os.remove(cline.query)
+    return cline.out
 
 
 @run_blastn.add
@@ -94,8 +95,8 @@ def run_blastn(query, subject, evalue, max_hits, max_hsps, identity, keep_query)
         out=blast_out
     )
     #   Run BLASTn
-    run_blastn(cline=blastn, keep_query=keep_query)
-    return blast_out
+    oufile = run_blastn(cline=blastn, keep_query=keep_query)
+    return outfile
 
 
 @run_blastn.add
@@ -128,8 +129,8 @@ def run_blastn(query, database, evalue, max_hits, max_hsps, identity, keep_query
         out=blast_out
     )
     #   Run BLASTn
-    run_blastn(cline=blastn, keep_query=keep_query)
-    return blast_out
+    outfile = run_blastn(cline=blastn, keep_query=keep_query)
+    return outfile
 
 
 @run_blastn.add
