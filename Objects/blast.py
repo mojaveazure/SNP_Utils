@@ -34,6 +34,9 @@ VALS = (
 #   The message found in a BLAST iteration if no hits were found
 NO_HIT_MESSAGE = 'No hits found'
 
+#   The message if no definition line, used to decide if we use accessions instead of deflines
+NO_DEF_MESSAGE = 'No definition line'
+
 #   An error I probably overuse...
 class NoSNPError(Exception):
     """A SNP has not been found"""
@@ -274,7 +277,9 @@ def parse_hit(snpid, hit):
         assert isinstance(hit, element.Tag)
     except AssertionError:
         raise TypeError
-    chrom = get_value(hit, 'Hit_def')
+    chrom = get_value(tag=hit, value='Hit_def')
+    if chrom == NO_DEF_MESSAGE:
+        chrom = get_value(tag=hit, value='Hit_accession')
     vals = list()
     hsps = list()
     for hsp in hit.findAll('Hsp'):
