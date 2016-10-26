@@ -4,15 +4,79 @@ import sys
 if sys.version_info.major is not 3:
     sys.exit("Please use Python 3 for this module")
 
-import argparse
 import os
+import argparse
 
 BLAST_CONFIG = os.getcwd() + '/blast_config.ini'
 
+LOOKUP_TABLE = """\
+Specify the path for lookup table of SNP contextual sequences.
+This table should be a two-column tab-delimeted table where the
+ first column is the SNP ID and the second column is the
+ contextual sequence in Illumina format (SNP contained in brackets)
+For example:
+    SNP1    ACGTCGACAGTCAGA[G/A]CGACGTTCAAGGCTCA
+    SNP2    TGCAGACCGTTGCAC[A/T]TGCCGATGCGATGACC
+"""
+
+def _filter_parser(parser):
+    try:
+        assert isinstance(parser, argparse.ArgumentParser)
+    except AssertionError:
+        raise TypeError
+    filters = parser.add_argument_group(
+        title='Filtering options',
+        description="Choose some optional filtering options for deduplicating the final SNPs"
+    )
+    filters.add_argument(
+        '-m',
+        '--genetic-map',
+        dest='map',
+        type=str,
+        default=None,
+        required=False,
+        metavar='GENETIC MAP',
+        help="Genetic map in Plink 1.9 MAP format, used in filtering SNPs on different chromosomes/contigs"
+    )
+    filters.add_argument(
+        '-t',
+        '--threshold',
+        dest='threshold',
+        type=int,
+        default=None,
+        required=False,
+        metavar='DISTANCE THRESHOLD',
+        help="Set a minimum distance for two potential SNPs on the same chromosome/contig. SNPs for the same marker within this distance will be combined into the leftmost position"
+    )
+
+
+def _lookup_parser(parser):
+    try:
+        assert isinstance(parser, argparse.ArgumentParser)
+    except AssertionError:
+        raise TypeError
+    lookup = parser.add_argument_group(
+        title='Lookup table',
+        description=LOOKUP_TABLE
+    )
+    lookup.add_argument(
+        '-l',
+        '--lookup',
+        dest='lookup',
+        type=str,
+        default=None,
+        required=True,
+        metavar='ILLUMINA LOOKUP TABLE',
+        help="SNP lookup table in Illumina format"
+    )
+
+
 #   Make an argument parser
 def make_argument_parser():
+    """Create an argument parser for SNP Utils"""
     parser = argparse.ArgumentParser(
         add_help=True,
+        formatter_class=argparse.RawTextHelpFormatter,
         prog=sys.argv[0]
     )
     #   Subparser for BLAST- vs Alignment-based SNP prediction
@@ -111,7 +175,11 @@ def make_argument_parser():
         help="Name of BLAST config file to write to, defaults to '" + BLAST_CONFIG + "'"
     )
     #   BLAST subparser
-    blast = subparsers.add_parser('BLAST')
+    blast = subparsers.add_parser(
+        'BLAST',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    _lookup_parser(blast)
     blast_in = blast.add_argument_group(
         title='Input options',
         description="Choose to input a BLAST config or XML file"
@@ -136,30 +204,7 @@ def make_argument_parser():
         metavar='BLAST XML RESULTS',
         help="Optional BLAST XML results already found, incompatible with '-c | --config'"
     )
-    blast_lookup = blast.add_argument_group(
-        title='Lookup table and genetic map',
-        description="Specify the path to the Illumina lookup table and an optional genetic map"
-    )
-    blast_lookup.add_argument(
-        '-l',
-        '--lookup',
-        dest='lookup',
-        type=str,
-        default=None,
-        required=True,
-        metavar='ILLUMINA LOOKUP TABLE',
-        help="SNP lookup table in Illumina format"
-    )
-    blast_lookup.add_argument(
-        '-m',
-        '--genetic-map',
-        dest='map',
-        type=str,
-        default=None,
-        required=False,
-        metavar='GENETIC MAP',
-        help="Genetic map in Plink 1.9 MAP format"
-    )
+    _filter_parser(blast)
     blast_out = blast.add_argument_group(
         title='Output options',
         description="Control the output of " + os.path.basename(sys.argv[0])
@@ -185,7 +230,11 @@ def make_argument_parser():
         help="Do we rank the SNPs and take the lowest e-value/highest scoring BLAST results? Pass '-r | --rank-snps' to say yes"
     )
     #   Alignment subparser
-    sam = subparsers.add_parser('SAM')
+    sam = subparsers.add_parser(
+        'SAM',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    _lookup_parser(sam)
     sam_input = sam.add_argument_group(
         title='Input options',
         description="Choose a SAM file and reference FASTA file to find SNPs"
@@ -210,30 +259,7 @@ def make_argument_parser():
         metavar='REFERENCE SEQUENCE',
         help="Reference sequence in FASTA format"
     )
-    sam_lookup = sam.add_argument_group(
-        title='Lookup table and genetic map',
-        description="Specify the path to the Illumina lookup table and an optional genetic map"
-    )
-    sam_lookup.add_argument(
-        '-l',
-        '--lookup',
-        dest='lookup',
-        type=str,
-        default=None,
-        required=True,
-        metavar='ILLUMINA LOOKUP TABLE',
-        help="SNP lookup table in Illumina format"
-    )
-    sam_lookup.add_argument(
-        '-m',
-        '--genetic-map',
-        dest='map',
-        type=str,
-        default=None,
-        required=False,
-        metavar='GENTIC MAP',
-        help="Genetic map in Plink 1.9 MAP format"
-    )
+    _filter_parser(sam)
     sam_out = sam.add_argument_group(
         title='Output options',
         description="Control the output of " + os.path.basename(sys.argv[0])
