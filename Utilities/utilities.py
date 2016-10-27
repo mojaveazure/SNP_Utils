@@ -44,6 +44,32 @@ class INFO(object):
         self._type = infotype
         self._description = description
 
+    def __repr__(self):
+        return self._infoid
+
+    def __eq__(self, other):
+        if isinstance(other, INFO):
+            return self._infoid == other._infoid
+        elif isinstance(other, str):
+            return self._infoid == other
+        else:
+            return NotImplemented
+
+    def __lt__(self, other):
+        if isinstance(other, INFO):
+            return self._infoid < other._infoid
+        else:
+            return NotImplemented
+
+    def __le__(self, other):
+        if isinstance(other, INFO):
+            return self._infoid <= other._infoid
+        else:
+            return NotImplemented
+
+    def __hash__(self):
+        return hash(self._infoid)
+
     def __call__(self):
         """Format the VCF ##INFO declaration for printing"""
         vals = [ # Assemble the meat of the INFO declaration

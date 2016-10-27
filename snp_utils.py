@@ -7,6 +7,7 @@ if sys.version_info.major is not 3:
 
 
 try:
+    from Utilities import filters
     from Utilities import arguments
     from Utilities import utilities
     from Utilities.utilities import INFO
@@ -171,12 +172,12 @@ def write_outputs(args, snp_filter, masked_filter, no_snps, ref_gen, vcf_info):
         assert isinstance(vcf_info, (list, tuple))
     except AssertionError:
         raise TypeError
-    header = utilities.vcf_header(ref_gen, vcf_info)
+    header = utilities.vcf_header(ref_gen, sorted(vcf_info))
     outfile = args['outname'] + '.vcf'
     maskedfile = args['outname'] + '_masked.vcf'
     failedfile = args['outname'] + '_failed.log'
     snp_list = list(snp_filter)
-    snp_list.sort(key=lambda s : (s.get_chrom(), s.get_position()))
+    snp_list.sort(key=lambda s: (s.get_chrom(), s.get_position()))
     if len(snp_list) < 1:
         print("Failed to find any SNPs", file=sys.stderr)
     else:
@@ -232,41 +233,13 @@ def main():
             ref_gen = args['reference']
             snp_list, no_snps = alignment_based(args, lookup_dict)
             vcf_info.append(INFO(infoid='S', number=0, infotype='Flag', description='Variant Calculated from SAM'))
+        #   Start our filtering
         masked = filter(lambda s: s.check_masked(), snp_list)
         proper_snps = filter(lambda s: not s.check_masked(), snp_list)
         if 'map' in args.keys():
-            print("Using map", args['map'], file=sys.stderr)
-            #   Create holding dictionaries and list
-            snp_dict = dict()
-            map_dict = dict()
-            map_snp = list()
-            #   Add new INFO fields to the VCF header
-            vcf_info.append(INFO(infoid='ALTCHR', number='.', infotype='String', description='Alternate chromosomal positions'))
-            vcf_info.append(INFO(infoid='ALTPOS', number='.', infotype='String', description='Alternate posititions'))
-            with open(args['map'], 'r') as mf:
-                for line in mf:
-                    try:
-                        split = line.strip().split()
-                        m = snp.Map(
-                            chrom=split[0],
-                            name=split[1],
-                            map_distance=float(split[2]),
-                            physical_position=int(split[3])
-                        )
-                        map_dict[m.get_name()] = m
-                    except IndexError:
-                        print("Failed line:", line, file=sys.stderr)
-            for proper in proper_snps:
-                if proper.get_snpid() in snp_dict:
-                    snp_dict[proper.get_snpid()].append(proper)
-                else:
-                    snp_dict[proper.get_snpid()] = [proper]
-            for snpid, snp_list in snp_dict.items():
-                if len(snp_list) > 1 and snpid in map_dict.keys():
-                    map_snp += snp.filter_snps(snp_list=snp_list, genetic_map=map_dict[snpid])
-                else:
-                    map_snp += snp_list
-            proper_snps = deepcopy(x=map_snp)
+            proper_snps, vcf_info = filters.chrom_filter(args=args, vcfinfo=vcf_info, propersnps=proper_snps)
+        if 'threshold' in args.keys():
+            proper_snps, vcf_info = filters.distance_filter(args=args, vcfinfo=vcf_info, propersnps=proper_snps)
         write_outputs(args, proper_snps, masked, list(no_snps), ref_gen, vcf_info)
 
 

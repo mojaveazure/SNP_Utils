@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+"""Create an argument parser for SNP Utils"""
+
 import sys
 if sys.version_info.major is not 3:
     sys.exit("Please use Python 3 for this module")
@@ -7,8 +9,8 @@ if sys.version_info.major is not 3:
 import os
 import argparse
 
+#   Two constants
 BLAST_CONFIG = os.getcwd() + '/blast_config.ini'
-
 LOOKUP_TABLE = """\
 Specify the path for lookup table of SNP contextual sequences.
 This table should be a two-column tab-delimeted table where the
@@ -19,6 +21,18 @@ For example:
     SNP2    TGCAGACCGTTGCAC[A/T]TGCCGATGCGATGACC
 """
 
+#   A function to check that a value is a positive integer
+def _positive_integer(value):
+    try:
+        assert int(value) >= 0
+        return int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("%s is not an integer" % value)
+    except AssertionError:
+        raise argparse.ArgumentTypeError("%s is not positive" % value)
+
+
+#   A function to create arguments for filtering options
 def _filter_parser(parser):
     try:
         assert isinstance(parser, argparse.ArgumentParser)
@@ -42,7 +56,7 @@ def _filter_parser(parser):
         '-t',
         '--threshold',
         dest='threshold',
-        type=int,
+        type=_positive_integer,
         default=None,
         required=False,
         metavar='DISTANCE THRESHOLD',
@@ -50,6 +64,7 @@ def _filter_parser(parser):
     )
 
 
+#   A function to create an argument for a lookup table
 def _lookup_parser(parser):
     try:
         assert isinstance(parser, argparse.ArgumentParser)

@@ -114,8 +114,30 @@ class SNP(object):
         else:
             return NotImplemented
 
+    def __lt__(self, other):
+        if isinstance(other, SNP):
+            return self._position < other._position
+        elif isinstance(other, (int, float)):
+            return self._position < other
+        else:
+            return NotImplemented
+
+    def __le__(self, other):
+        if isinstance(other, SNP):
+            return self._position <= other._position
+        elif isinstance(other, (int, float)):
+            return self._position <= other
+        else:
+            return NotImplemented
+
     def __hash__(self):
         return hash(self._snpid)
+
+    def __sub__(self, other):
+        if isinstance(other, SNP):
+            return self._position - other._position
+        else:
+            return NotImplemented
 
     def _calculate_position(self, lookup, alignment):
         """Calculate the position of the SNP in the reference sequence"""
@@ -434,13 +456,15 @@ class Map(object):
 
 
 #   Filter snps using a genetic map
-def filter_snps(snp_list, genetic_map):
-    """Filter a list or tuple of potential SNPs for the same marker by genetic map distance"""
+def filter_snps(snp_list, genetic_map, altchr='ALTCHR', altpos='ALTPOS'):
+    """Filter a list or tuple of potential SNPs for the same marker by genetic map chromosome"""
     try:
         assert isinstance(snp_list, (list, tuple))
         for snp in snp_list:
             assert isinstance(snp, SNP)
         assert isinstance(genetic_map, Map)
+        assert isinstance(altchr, str)
+        assert isinstance(altpos, str)
     except AssertionError:
         raise TypeError
     try:
@@ -456,6 +480,6 @@ def filter_snps(snp_list, genetic_map):
         fail_chr = failed.get_chrom()
         fail_pos = failed.get_position()
         for mapped in mapped_snps:
-            mapped.add_info(key='ALTCHR', value=fail_chr)
-            mapped.add_info(key='ALTPOS', value=fail_pos)
+            mapped.add_info(key=altchr, value=fail_chr)
+            mapped.add_info(key=altpos, value=fail_pos)
     return mapped_snps

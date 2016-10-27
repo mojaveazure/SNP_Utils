@@ -6,15 +6,19 @@ if sys.version_info.major is not 3:
 
 import configparser
 
+from BLAST.runblastn import validate_db
+from Objects.wrappers import NcbimakeblastdbCommandline
+
 SECTION_NAME = "BLAST_SETTINGS"
 CONFIG_VALUES = {
-    'subject' : 'str',
-    'database' : 'str',
-    'evalue' : 'float',
-    'max_hits' : 'int',
-    'max_hsps' : 'int',
-    'identity' : 'float',
-    'keep_query' : 'bool'
+    # Option name   : option type
+    'subject'       :   'str',
+    'database'      :   'str',
+    'evalue'        :   'float',
+    'max_hits'      :   'int',
+    'max_hsps'      :   'int',
+    'identity'      :   'float',
+    'keep_query'    :   'bool'
 }
 
 #   Make a configuration file
@@ -22,6 +26,13 @@ def make_config(args):
     """Make a configuration file for BLAST"""
     config = configparser.ConfigParser()
     config.add_section(SECTION_NAME)
+    if 'database' in args.keys():
+        try:
+            validate_db(args['database'])
+        except FileNotFoundError:
+            # print("Failed to find", args['database'], "creating new database...", file=sys.stderr)
+            print("Failed to find", args['database'], "exiting...", file=sys.stderr)
+            sys.exit()
     for option in CONFIG_VALUES:
         try:
             config.set(SECTION_NAME, option, str(args[option]))
