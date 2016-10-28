@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+"""Write and parse configuration files for BLASTn"""
+
 import sys
 if sys.version_info.major is not 3:
     sys.exit("Please use Python 3 for this module: " + __name__)
@@ -7,7 +9,6 @@ if sys.version_info.major is not 3:
 import configparser
 
 from BLAST.runblastn import validate_db
-from Objects.wrappers import NcbimakeblastdbCommandline
 
 SECTION_NAME = "BLAST_SETTINGS"
 CONFIG_VALUES = {
@@ -21,18 +22,35 @@ CONFIG_VALUES = {
     'keep_query'    :   'bool'
 }
 
+#   Validate a configuration file
+def validate_config(conf_dict, typecheck=False):
+    """Validate a dictionary for BLAST configuration"""
+    print("Validating config", file=sys.stderr)
+    try:
+        assert isinstance(conf_dict, dict)
+        assert isinstance(typecheck, bool)
+    except AssertionError:
+        raise TypeError
+    try:
+        for value in {'evalue', 'max_hits', 'max_hsps', 'identity', 'keep_query'}:
+            assert value in conf_dict
+            if typecheck:
+                assert isinstance(conf_dict[value], eval(CONFIG_VALUES[value]))
+        assert ('subject' in conf_dict and 'database' not in conf_dict) or ('subject' not in conf_dict and 'database' in conf_dict)
+        if 'database' in conf_dict:
+            validate_db(conf_dict['database'])
+    except AssertionError:
+        raise ValueError
+    except:
+        raise
+
+
 #   Make a configuration file
 def make_config(args):
     """Make a configuration file for BLAST"""
     config = configparser.ConfigParser()
     config.add_section(SECTION_NAME)
-    if 'database' in args.keys():
-        try:
-            validate_db(args['database'])
-        except FileNotFoundError:
-            # print("Failed to find", args['database'], "creating new database...", file=sys.stderr)
-            print("Failed to find", args['database'], "exiting...", file=sys.stderr)
-            sys.exit()
+    validate_config(conf_dict=args, typecheck=False)
     for option in CONFIG_VALUES:
         try:
             config.set(SECTION_NAME, option, str(args[option]))
@@ -69,4 +87,5 @@ def parse_config(config_file):
             continue
         else:
             print(option, "set to", bconf[option], file=sys.stderr)
+    validate_config(conf_dict=bconf, typecheck=True)
     return bconf
