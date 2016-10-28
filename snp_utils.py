@@ -23,8 +23,7 @@ except ImportError:
     sys.exit("Please make sure you are in the 'SNP_Utils' directory to load custom modules")
 
 
-from copy import deepcopy
-from itertools import product
+from os.path import basename
 
 try:
     from bs4 import BeautifulSoup
@@ -33,6 +32,8 @@ try:
 except ImportError as error:
     sys.exit("Please install " + error.name)
 
+
+REFERENCE_DEFAULT = basename(sys.argv[0])
 
 #   BLAST-based
 def blast_based(args, lookup_dict):
@@ -58,6 +59,7 @@ def blast_based(args, lookup_dict):
         #   Read the XML file provided
         print("Loading BLAST XML file", file=sys.stderr)
         blast_xml = args['xml']
+        bconf = dict() # In case of filtering
     try:
         #   Make soup out of the XML
         blast_soup = BeautifulSoup(blast_xml, 'xml')
@@ -67,8 +69,10 @@ def blast_based(args, lookup_dict):
     snp_list = [] # A list to hold all SNPs found
     hsps = [] # A list of HSPs from the XML file
     ref_gen = blast.get_value(tag=blast_soup, value='BlastOutput_db')
+    bconf['database'] = ref_gen
     if not ref_gen:
-        ref_gen = blast.get_value(tag=blast_soup, value='BlastOutput_version')
+        ref_gen = REFERENCE_DEFAULT
+        bconf = None
     for query in blast_soup.findAll('Iteration'):
         snpid = blast.get_value(tag=query, value='Iteration_query-def')
         #   Ask if no hits were found
@@ -113,7 +117,7 @@ def blast_based(args, lookup_dict):
                 no_hits.add(hsp.get_name())
     hit_snps = {s.get_snpid() for s in snp_list}
     no_hits -= hit_snps
-    return(snp_list, no_hits, ref_gen)
+    return(snp_list, no_hits, ref_gen, bconf)
 
 
 #   Alignment-blast_based
@@ -213,6 +217,7 @@ def main():
     if not sys.argv[1:]:
         sys.exit(parser.print_help())
     args = {key : value for key, value in vars(parser.parse_args()).items() if value is not None}
+    arguments.validate_filters(args=args, parser=parser)
     if args['method'] == 'CONFIG':
         configure.make_config(args)
     else:
@@ -226,20 +231,25 @@ def main():
                 lookup_dict[l.get_snpid()] = l
         if args['method'] == 'BLAST':
             method = 'BLAST'
-            snp_list, no_snps, ref_gen = blast_based(args, lookup_dict)
+            snp_list, no_snps, ref_gen, bconf = blast_based(args, lookup_dict)
             vcf_info.append(INFO(infoid='B', number=0, infotype='Flag', description='Variant Calculated from BLAST'))
         elif args['method'] == 'SAM':
             method = 'SAM'
             ref_gen = args['reference']
+            bconf = None
             snp_list, no_snps = alignment_based(args, lookup_dict)
             vcf_info.append(INFO(infoid='S', number=0, infotype='Flag', description='Variant Calculated from SAM'))
         #   Start our filtering
         masked = filter(lambda s: s.check_masked(), snp_list)
-        proper_snps = filter(lambda s: not s.check_masked(), snp_list)
-        if 'map' in args.keys():
+        proper_snps = tuple(filter(lambda s: not s.check_masked(), snp_list))
+        if 'map' in args and args['bychrom']:
             proper_snps, vcf_info = filters.chrom_filter(args=args, vcfinfo=vcf_info, propersnps=proper_snps)
         if 'threshold' in args.keys():
             proper_snps, vcf_info = filters.distance_filter(args=args, vcfinfo=vcf_info, propersnps=proper_snps)
+        if 'map' in args and args['bydistance'] and ref_gen is not REFERENCE_DEFAULT:
+            proper_snps, vcf_info = filters.map_filter(args=args, vcfinfo=vcf_info, propersnps=proper_snps, refgen=ref_gen, method=method, bconf=bconf)
+        elif ref_gen is REFERENCE_DEFAULT:
+            print("Could not determine reference genome, not filtering by genetic map distance", file=sys.stderr)
         write_outputs(args, proper_snps, masked, list(no_snps), ref_gen, vcf_info)
 
 

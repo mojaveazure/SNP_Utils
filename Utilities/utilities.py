@@ -19,8 +19,8 @@ class INFO(object):
         INFO Description    (str)
     """
 
-    _VALID_TYPES = ['Integer', 'Float', 'Flag', 'Character', 'String']
-    _CHAR_NUMS = 'AGR.'
+    _VALID_TYPES = {'Integer', 'Float', 'Flag', 'Character', 'String'}
+    _CHAR_NUMS = {'A', 'G', 'R', '.'}
 
     def __init__(self, infoid, number, infotype, description):
         try: # Type checking
@@ -152,6 +152,28 @@ def rank_remove(data, lowest=False):
     return result # Return our list
 
 
+#   A function to find the closest value
+def closest_value(iterable, value, return_item=True):
+    """Return the closest member of a list, tuple, or dictionary to value
+    If return_item is False, we return the key of the dictionary that's closest to value
+    Otherwise, we return the value corresponding to the key closest to value"""
+    try:
+        assert isinstance(iterable, (list, tuple, dict))
+        for val in iterable:
+            assert isinstance(val, (int, float))
+        assert isinstance(value, (int, float))
+        assert isinstance(return_item, bool)
+    except AssertionError:
+        raise TypeError
+    closest = lambda val: abs(val - value)
+    if isinstance(iterable, (list, tuple)) or (isinstance(iterable, dict) and not return_item):
+        return min(iterable, key=closest)
+    elif isinstance(iterable, dict) and return_item:
+        return iterable[min(iterable, key=closest)]
+    else:
+        raise NotImplementedError
+
+
 #   A function to make a VCF header
 def vcf_header(ref, info=None):
     """Make a header for a VCF file given a reference genome and an optional list of INFO objects"""
@@ -169,7 +191,7 @@ def vcf_header(ref, info=None):
     filedate = '##fileDate=' + datetime.now().strftime("%Y%m%d")
     source = '##source=' + os.path.basename(sys.argv[0])
     reference = '##reference=' + os.path.basename(ref)
-    colnames = [
+    colnames = (
         '#CHROM',
         'POS',
         'ID',
@@ -178,7 +200,7 @@ def vcf_header(ref, info=None):
         'QUAL',
         'FILTER',
         'INFO'
-    ]
+    )
     header = [
         fileformat,
         filedate,

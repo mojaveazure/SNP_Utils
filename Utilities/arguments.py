@@ -9,7 +9,7 @@ if sys.version_info.major is not 3:
 import os
 import argparse
 
-#   Two constants
+#   Three constants
 BLAST_CONFIG = os.getcwd() + '/blast_config.ini'
 LOOKUP_TABLE = """\
 Specify the path for lookup table of SNP contextual sequences.
@@ -20,6 +20,28 @@ For example:
     SNP1    ACGTCGACAGTCAGA[G/A]CGACGTTCAAGGCTCA
     SNP2    TGCAGACCGTTGCAC[A/T]TGCCGATGCGATGACC
 """
+FILTER_OPTS = ('bychrom', 'bydistance')
+
+#   A function to validate filter arguments
+def validate_filters(args, parser):
+    """Validate the filtering options regarding a genetic map"""
+    try:
+        assert isinstance(args, dict)
+        assert isinstance(parser, argparse.ArgumentParser)
+    except AssertionError:
+        raise TypeError
+    try:
+        assert 'bychrom' in args
+        assert 'bydistance' in args
+    except AssertionError:
+        raise ValueError
+    (bychrom, bydistance) = FILTER_OPTS
+    if args[bychrom] or args[bydistance]:
+        try:
+            assert 'map' in args
+        except AssertionError:
+            parser.error(message="Filtering by chromosome/contig and/or genetic map distance requires '-m | --genetic-map'")
+
 
 #   A function to check that a value is a positive integer
 def _positive_integer(value):
@@ -38,6 +60,7 @@ def _filter_parser(parser):
         assert isinstance(parser, argparse.ArgumentParser)
     except AssertionError:
         raise TypeError
+    (bychrom, bydistance) = FILTER_OPTS
     filters = parser.add_argument_group(
         title='Filtering options',
         description="Choose some optional filtering options for deduplicating the final SNPs"
@@ -51,6 +74,26 @@ def _filter_parser(parser):
         required=False,
         metavar='GENETIC MAP',
         help="Genetic map in Plink 1.9 MAP format, used in filtering SNPs on different chromosomes/contigs"
+    )
+    filters.add_argument(
+        '-b',
+        '--by-chrom',
+        dest=str(bychrom),
+        action='store_const',
+        const=True,
+        default=False,
+        required=False,
+        help="Do we filter potential SNPs by chromosome/contig found in a genetic map? Requires '-m | --genetic-map'"
+    )
+    filters.add_argument(
+        '-d',
+        '--by-distance',
+        dest=str(bydistance),
+        action='store_const',
+        const=True,
+        default=False,
+        required=False,
+        help="Do we filter potential SNPs by proportional distance along a chromosome/contig as given by the genetic map? Requires '-m | --genetic-map'"
     )
     filters.add_argument(
         '-t',

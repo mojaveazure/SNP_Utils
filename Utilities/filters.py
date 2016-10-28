@@ -11,7 +11,7 @@ from copy import deepcopy
 
 from Objects.snp import SNP, read_map, filter_snps
 from Objects.wrappers import NcbiblastdbcmdCommandline
-from . utilities import INFO
+from . utilities import INFO, closest_value
 
 try:
     from Bio import SeqIO
@@ -37,7 +37,7 @@ ALTPOS = INFO( # Create an info object for alternate positions
 def _sort_snps(snplist, bychrom=False):
     """Sort SNPs by SNP ID and, optionally, chromosome/contig"""
     try:
-        assert isinstance(snplist, (list, tuple, filter))
+        assert isinstance(snplist, (list, tuple))
         for snp in snplist:
             assert isinstance(snp, SNP)
         assert isinstance(bychrom, bool)
@@ -77,6 +77,7 @@ def chrom_filter(args, vcfinfo, propersnps):
         assert 'map' in args.keys()
     except AssertionError:
         raise ValueError
+    print("Filtering SNPs by hit chromsome/contig", file=sys.stderr)
     #   Add our VCF header
     infoheader = set(deepcopy(vcfinfo)) # NO SIDE EFFECTS
     infoheader.add(ALTCHR)
@@ -155,7 +156,7 @@ def map_filter(args, vcfinfo, propersnps, refgen, method, bconf=None):
     """Filters potatoes"""
     #   Create holding collections
     chrom_lengths = dict() # Dictionary to hold chromosomal sequence lengths
-    selected_snps = list() # List of filtered SNPs
+    closest_snps = list() # List of filtered SNPs
     try: # Type checking
         assert isinstance(args, dict)
         assert isinstance(vcfinfo, list)
@@ -166,7 +167,7 @@ def map_filter(args, vcfinfo, propersnps, refgen, method, bconf=None):
         snp_dict = _sort_snps(snplist=propersnps, bychrom=True)
         assert isinstance(refgen, str)
         assert isinstance(method, str)
-        assert isinstance(bconf, dict)
+        assert isinstance(bconf, dict) or bconf is None
     except AssertionError:
         raise TypeError
     try: # Value checking
@@ -178,7 +179,7 @@ def map_filter(args, vcfinfo, propersnps, refgen, method, bconf=None):
             assert 'subject' in bconf or 'database' in bconf
     except AssertionError:
         raise ValueError
-    print("Filtering potatoes", file=sys.stderr)
+    print("Filtering SNPs by relative location on the genetic map", file=sys.stderr)
     #   Add our VCF header
     infoheader = set(deepcopy(vcfinfo)) # NO SIDE EFFECTS
     infoheader.add(ALTCHR)
@@ -196,6 +197,7 @@ def map_filter(args, vcfinfo, propersnps, refgen, method, bconf=None):
             sys.exit("Failed to find " + error.filename)
     elif 'database' in bconf:
         try:
+            print("Parsing blast database", bconf['database'], file=sys.stderr)
             accessioncmd = NcbiblastdbcmdCommandline(
                 db=bconf['database'],
                 dbtype='nucl',
@@ -217,7 +219,37 @@ def map_filter(args, vcfinfo, propersnps, refgen, method, bconf=None):
             sys.exit(error)
     else:
         raise NotImplementedError
-    return chrom_lengths
+    print("Found", len(chrom_lengths), 'chromosomes', file=sys.stderr)
+    print("Filtering", len(snp_dict), "SNP IDs", file=sys.stderr)
+    for key, snplist in snp_dict.items():
+        (snpid, chrom) = key
+        try:
+            assert len(snplist) > 1
+            these_snps = deepcopy(snplist)
+            map_length = max([m.get_map_distance() for m in map_dict.values() if m.get_chrom() == chrom])
+            map_proportion = map_dict[snpid].get_map_distance() / map_length
+            length_dict = {snp / chrom_lengths[chrom] : snp for snp in these_snps}
+            closest = closest_value(iterable=length_dict, value=map_proportion, return_item=True)
+            these_snps.remove(closest)
+            for remaining in these_snps:
+                closest.add_info(
+                    key=ALTCHR.get_id(),
+                    value=remaining.get_chrom()
+                )
+                closest.add_info(
+                    key=ALTPOS.get_id(),
+                    value=remaining.get_position()
+                )
+            closest_snps.append(closest)
+        except AssertionError: # Don't need to do all this crap and spit out error messages
+            closest_snps.extend(snplist)
+        except KeyError:
+            print("No map found for", snpid, file=sys.stderr)
+            closest_snps.extend(snplist)
+        except ValueError:
+            print("No genetic map for chromosome", chrom, file=sys.stderr)
+            closest_snps.extend(snplist)
+    return (closest_snps, list(infoheader))
 
 
 

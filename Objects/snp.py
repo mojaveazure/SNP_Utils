@@ -133,9 +133,39 @@ class SNP(object):
     def __hash__(self):
         return hash(self._snpid)
 
+    def __add__(self, other):
+        if isinstance(other, SNP):
+            return self._position + other._position
+        else:
+            return NotImplemented
+
     def __sub__(self, other):
         if isinstance(other, SNP):
             return self._position - other._position
+        else:
+            return NotImplemented
+
+    def __mul__(self, other):
+        if isinstance(other, (int, float)):
+            return self._position * other
+        else:
+            return NotImplemented
+
+    def __rmul__(self, other):
+        if isinstance(other, (int, float)):
+            return other * self._position
+        else:
+            return NotImplemented
+
+    def __truediv__(self, other):
+        if isinstance(other, (int, float)):
+            return self._position / other
+        else:
+            return NotImplemented
+
+    def __rtruediv__(self, other):
+        if isinstance(other, (int, float)):
+            return other / self._position
         else:
             return NotImplemented
 
@@ -453,6 +483,33 @@ class Map(object):
         except AssertionError:
             raise TypeError
         self._pos = physical_position
+
+
+#   A function to read in a genetic map
+def read_map(mapfile):
+    """Read in a genetic map into a dictionary"""
+    try:
+        assert isinstance(mapfile, str)
+    except AssertionError:
+        raise TypeError
+    map_dict = dict()
+    try:
+        with open(mapfile, 'r') as mf:
+            print("Using genetic map ", mapfile, file=sys.stderr)
+            for line in mf:
+                split = line.strip().split()
+                m = Map(
+                    chrom=split[0],
+                    name=split[1],
+                    map_distance=float(split[2]),
+                    physical_position=int(split[3])
+                )
+                map_dict[m.get_name()] = m
+    except IndexError:
+        print("Failed line:", line, file=sys.stderr)
+    except FileNotFoundError as error:
+        sys.exit("Failed to find " + error.filename)
+    return map_dict
 
 
 #   Filter snps using a genetic map
