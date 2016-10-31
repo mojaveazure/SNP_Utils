@@ -217,7 +217,6 @@ def main():
     if not sys.argv[1:]:
         sys.exit(parser.print_help())
     args = {key : value for key, value in vars(parser.parse_args()).items() if value is not None}
-    sys.exit(args)
     if args['method'] == 'CONFIG':
         configure.make_config(args)
     else:
