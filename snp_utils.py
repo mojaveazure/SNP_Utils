@@ -217,18 +217,22 @@ def main():
     if not sys.argv[1:]:
         sys.exit(parser.print_help())
     args = {key : value for key, value in vars(parser.parse_args()).items() if value is not None}
-    arguments.validate_filters(args=args, parser=parser)
+    sys.exit(args)
     if args['method'] == 'CONFIG':
         configure.make_config(args)
     else:
+        arguments.validate_filters(args=args, parser=parser) # Validate filtering options
+        #   Two holding collections
         lookup_dict = {}
         vcf_info = []
+        #   Read in the lookup table
         with open(args['lookup'], 'r') as lk:
             print("Reading in lookup table", args['lookup'], file=sys.stderr)
             for line in lk:
                 split = line.strip().split()
                 l = snp.Lookup(split[0], split[1])
                 lookup_dict[l.get_snpid()] = l
+        #   Find SNPs given our method of BLAST or SAM
         if args['method'] == 'BLAST':
             method = 'BLAST'
             snp_list, no_snps, ref_gen, bconf = blast_based(args, lookup_dict)
