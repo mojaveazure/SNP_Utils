@@ -38,6 +38,9 @@ NO_DEF_MESSAGE = 'No definition line'
 #   An error I probably overuse...
 class NoSNPError(Exception):
     """A SNP has not been found"""
+    def __init__(self, message): # Make this error infinitely more useful
+        super(self.__class__, self).__init__(message)
+        self.message = str(message)
 
 
 #   A class definition for a BLAST Hsp
@@ -59,7 +62,7 @@ class Hsp(object):
         """
 
     def __init__(self, chrom, name, evalue, qseq, hseq, hstart, hend, hstrand, bit_score, identity, aligned_length):
-        try:
+        try: # Type checking
             assert isinstance(chrom, str)
             assert isinstance(name, str)
             assert isinstance(evalue, float)
@@ -73,22 +76,24 @@ class Hsp(object):
             assert isinstance(aligned_length, int)
         except AssertionError:
             raise TypeError
-        try:
+        try: # Value checking
             assert hstrand == 1 or hstrand == -1
             assert identity <= aligned_length
         except AssertionError:
             raise ValueError
-        self._chrom = chrom
-        self._name = name
-        self._evalue = evalue
-        self._query = qseq
-        self._subject = hseq
-        self._start = hstart
-        self._end = hend
-        self._hstrand = hstrand
-        self._bits = bit_score
-        self._identity = identity
-        self._alength = aligned_length
+        #   Hsp information
+        self._chrom = chrom # Hit_def/Hit_accession
+        self._name = name # Iteration_query-def
+        self._evalue = evalue # Hsp_evalue
+        self._query = qseq # Hsp_qseq
+        self._subject = hseq # Hsp_hseq
+        self._start = hstart # Hsp_hit-from
+        self._end = hend # Hsp_hit-to
+        self._hstrand = hstrand #Hsp_hit-strand
+        self._bits = bit_score # Hsp_bit-score
+        self._identity = identity # Hsp_identity
+        self._alength = aligned_length # Hsp_align-len
+        #   SNP information
         self._snp_pos = None
         self._snp = None
 
@@ -96,11 +101,11 @@ class Hsp(object):
         return self._name + ":" + str(self._evalue)
 
     def __eq__(self, other):
-        if isinstance(other, Hsp):
-            name_bool = self._name == other._name
-            eval_bool = self._evalue == other._evalue
-            score_bool = self._bits == other._bits
-            return name_bool and eval_bool and score_bool
+        if isinstance(other, Hsp): # Check equality with other Hsp objects
+            name_bool = self._name == other._name # Ensure our name is equal to the other name
+            eval_bool = self._evalue == other._evalue # Is our evalue equal to the other evalue
+            score_bool = self._bits == other._bits # Is our score equal to the other score
+            return name_bool and eval_bool and score_bool # Return whether all of these are true
         elif isinstance(other, str):
             return self._name == other
         elif isinstance(other, float):
@@ -264,8 +269,9 @@ class Hsp(object):
             raise TypeError
         try: # Value checking
             assert self._name == lookup.get_snpid()
-            s = snp.SNP(lookup=lookup, hsp=self)
-            self.add_snp(this_snp=s)
+            # s = snp.SNP(lookup=lookup, hsp=self)
+            # self.add_snp(this_snp=s)
+            self.add_snp(this_snp=snp.SNP(lookup=lookup, hsp=self))
         except AssertionError:
             raise ValueError
         except:
@@ -275,8 +281,7 @@ class Hsp(object):
     def get_snp(self):
         """Return the SNP associated with this Hsp"""
         if not self._snp:
-            print('dafuq', self, file=sys.stderr)
-            raise NoSNPError
+            raise NoSNPError('No snp for me: ' + self)
         return self._snp
 
 
@@ -285,9 +290,12 @@ def get_value(tag, value):
     """Get the value from an element.Tag object"""
     try:
         assert isinstance(tag, element.Tag)
+        assert isinstance(value, str)
         return tag.findChild(value).text
     except AssertionError:
-        raise TypeError
+        raise TypeError("'tag' must be of type 'element.tag'; 'value' must be of type 'str'")
+    except AttributeError:
+        return ''
     except:
         raise
 
@@ -298,49 +306,47 @@ def parse_hsp(hsp):
     try: # Type checking
         assert isinstance(hsp, element.Tag)
     except AssertionError:
-        raise TypeError
+        raise TypeError("'hsp' must be of type 'element.Tag'")
     #   Ensure that our HSP has at least one mismatch
     if hsp.findChild('Hsp_midline').text.count(' ') < 1:
-        raise NoSNPError
-    hsp_vals = (get_value(tag=hsp, value=val) for val in VALS)
-    return hsp_vals
+        raise NoSNPError('No mismatches found for this Hsp')
+    return tuple(get_value(tag=hsp, value=val) for val in VALS)
 
 
 #   A function to parse the Hit section of a BLAST XML file
 def parse_hit(snpid, hit):
     """Parse the Hit section of a BLAST XML result"""
-    try:
+    try: # Type checking
         assert isinstance(snpid, str)
         assert isinstance(hit, element.Tag)
     except AssertionError:
-        raise TypeError
+        raise TypeError("'snpid' must be of type 'str'; 'hit' must be of type 'element.Tag'")
+    #   Get and check the chromosome information
     chrom = get_value(tag=hit, value='Hit_def')
     if chrom == NO_DEF_MESSAGE:
         chrom = get_value(tag=hit, value='Hit_accession')
-    vals = list()
-    hsps = list()
+    hsps = list() # Create a holding list
     for hsp in hit.findAll('Hsp'):
         try:
             hsp_vals = parse_hsp(hsp)
-            vals.append(hsp_vals)
-        except NoSNPError:
-            continue
-    for val in vals:
-        (bit_score, evalue, hsp_start, hsp_end, strand, identity, align_length, query, reference) = val
-        hsp = Hsp(
-            chrom=chrom,
-            name=snpid,
-            evalue=float(evalue),
-            qseq=query,
-            hseq=reference,
-            hstart=int(hsp_start),
-            hend=int(hsp_end),
-            hstrand=int(strand),
-            bit_score=float(bit_score),
-            identity=int(identity),
-            aligned_length=int(align_length)
-        )
-        hsps.append(hsp)
+        except NoSNPError as nosnp:
+            print(snpid + ':', nosnp.message)
+        else:
+            (bit_score, evalue, hsp_start, hsp_end, strand, identity, align_length, query, reference) = hsp_vals # Unpack our tuple
+            hsp = Hsp( # Create an Hsp object
+                chrom=chrom,
+                name=snpid,
+                evalue=float(evalue),
+                qseq=query,
+                hseq=reference,
+                hstart=int(hsp_start),
+                hend=int(hsp_end),
+                hstrand=int(strand),
+                bit_score=float(bit_score),
+                identity=int(identity),
+                aligned_length=int(align_length)
+            )
+            hsps.append(hsp) # Add to our list
     if hsps:
         return hsps
     else:
