@@ -19,8 +19,8 @@ try:
     from Objects.blast import NoSNPError
     from BLAST import runblastn
     from BLAST import configure
-except ImportError:
-    sys.exit("Please make sure you are in the 'SNP_Utils' directory to load custom modules")
+except ImportError as error:
+    sys.exit("Please make sure you are in the 'SNP_Utils' directory to load custom modules:" + error.name)
 
 
 from os.path import basename
@@ -79,22 +79,19 @@ def blast_based(args, lookup_dict):
     for query in blast_soup.findAll('Iteration'):
         snpid = blast.get_value(tag=query, value='Iteration_query-def')
         #   Ask if no hits were found
-        try:
-            if blast.get_value(tag=query, value='Iteration_message').capitalize() == blast.NO_HIT_MESSAGE:
-                print('No hit for', snpid, file=sys.stderr)
-                no_hits.add(snpid)
-                continue
-        except AttributeError:
-            pass
-        #   For every hit found
-        for hit in query.findAll('Hit'):
-            hit_num = blast.get_value(tag=hit, value='Hit_num')
-            this_hsps = blast.parse_hit(snpid=snpid, hit=hit) # Parse the HSPs from this Hit
-            try: # blast.parse_hit() returns a list or a None
-                hsps += this_hsps
-            except TypeError: # If this_hsps is a None
-                print('No HSPs for', snpid, 'hit number:', hit_num, file=sys.stderr)
-                no_hits.add(snpid) # Log as a failure
+        if blast.get_value(tag=query, value='Iteration_message').capitalize() == blast.NO_HIT_MESSAGE:
+            print('No hit for', snpid, file=sys.stderr)
+            no_hits.add(snpid)
+        else:
+            #   For every hit found
+            for hit in query.findAll('Hit'):
+                hit_num = blast.get_value(tag=hit, value='Hit_num')
+                this_hsps = blast.parse_hit(snpid=snpid, hit=hit) # Parse the HSPs from this Hit
+                try: # blast.parse_hit() returns a list or a None
+                    hsps += this_hsps
+                except TypeError: # If this_hsps is a None
+                    print('No HSPs for', snpid, 'hit number:', hit_num, file=sys.stderr)
+                    no_hits.add(snpid) # Log as a failure
     #   For the parsed HSPs
     for hsp in hsps:
         #   Get the name of the SNP and corresponding Lookup information
