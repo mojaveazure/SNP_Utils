@@ -37,17 +37,25 @@ class SNP(object):
         Reference Base
         Alternate Base
     """
+
     @staticmethod
-    def reverse_complement(base):
-        """Get the reverse complement of a nucleotide"""
+    def reverse_complement(sequence):
+        """Get the reverse complement of a nucleotide sequence"""
+        forward = 'ACGTNacgtn'
+        reverse = 'TGCANtgcan'
         try:
-            assert isinstance(base, str)
-            assert len(base) is 1
-            assert base in 'ACGTNacgtn' or base in Lookup.IUPAC_CODES
-            rc = str.maketrans('ACGTNacgtn', 'TGCANtgcan')
-            return base.translate(rc)
+            assert isinstance(sequence, (str, list, tuple))
+            if isinstance(sequence, (list, tuple)):
+                for base in sequence:
+                    assert isinstance(base, str)
+                    assert len(base) is 1
+            for base in sequence:
+                assert base in forward or base in Lookup.IUPAC_CODES
         except AssertionError:
-            raise NotABaseError
+            raise TypeError("'sequence' must be of type 'str' or be a list or tuple of single-character 'str' objects within '%s' or 'RYSWKM'" % forward)
+        else:
+            rc_table = str.maketrans(forward, reverse)
+            return ''.join(tuple(base.translate(rc_table) for base in sequence))
 
     @overload
     def __init__(self, lookup):
@@ -92,7 +100,6 @@ class SNP(object):
             raise NoMatchError
         #   The contig and SNP position are found in the hsp
         self._contig = hsp.get_chrom()
-        # self._position = hsp.get_snp_position(lookup.get_code(), lookup.get_forward_position())
         self._position = hsp.get_snp_position(lookup=lookup)
         self._flags.append('B')
         #   Get the rest of the information
@@ -210,7 +217,7 @@ class SNP(object):
     @_find_states.add
     def _find_states(self, lookup, hsp):
         """Get the reference and alternate alleles"""
-        try:
+        try: # Type checking
             assert isinstance(lookup, Lookup)
             assert isinstance(hsp, blast.Hsp)
             self._reference = hsp.get_subject_allele() # Get the reference allele from the Hit
