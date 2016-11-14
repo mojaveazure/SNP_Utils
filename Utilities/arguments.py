@@ -49,9 +49,9 @@ def _positive_integer(value):
         assert int(value) >= 0
         return int(value)
     except ValueError:
-        raise argparse.ArgumentTypeError("%s is not an integer" % value)
+        raise argparse.ArgumentTypeError("%s is not an integer" % str(value))
     except AssertionError:
-        raise argparse.ArgumentTypeError("%s is not positive" % value)
+        raise argparse.ArgumentTypeError("%s is not positive" % str(value))
 
 
 #   A function to create arguments for filtering options

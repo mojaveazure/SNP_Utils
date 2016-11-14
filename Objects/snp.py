@@ -43,7 +43,7 @@ class SNP(object):
         try:
             assert isinstance(base, str)
             assert len(base) is 1
-            assert base in 'ACGTNacgtn'
+            assert base in 'ACGTNacgtn' or base in Lookup.IUPAC_CODES
             rc = str.maketrans('ACGTNacgtn', 'TGCANtgcan')
             return base.translate(rc)
         except AssertionError:
@@ -92,7 +92,8 @@ class SNP(object):
             raise NoMatchError
         #   The contig and SNP position are found in the hsp
         self._contig = hsp.get_chrom()
-        self._position = hsp.get_snp_position(lookup.get_code(), lookup.get_forward_position())
+        # self._position = hsp.get_snp_position(lookup.get_code(), lookup.get_forward_position())
+        self._position = hsp.get_snp_position(lookup=lookup)
         self._flags.append('B')
         #   Get the rest of the information
         self._find_states(lookup, hsp) # Reference and alternate states
@@ -291,7 +292,7 @@ class Lookup(object):
     """
 
     # A dictionary of IUPAC codes for SNPs
-    _IUPAC_CODES = {
+    IUPAC_CODES = {
         'R' : 'AG',
         'Y' : 'CT',
         'S' : 'CG',
@@ -349,7 +350,7 @@ class Lookup(object):
         #   Create a string of the two states of the SNP in alphabetical order
         ordered_snp = ''.join(sorted(re.findall('[ACGT]', self._snp)))
         #   Find the IUPAC code for the SNP
-        self._code = ''.join([c for c, o in self._IUPAC_CODES.items() if ordered_snp == o])
+        self._code = ''.join([c for c, o in self.IUPAC_CODES.items() if ordered_snp == o])
         #   Create the IUPAC version of the sequence
         self._iupac = re.sub(r'\[%s\]' % self._snp[1:-1], self._code, self._sequence)
 
@@ -373,13 +374,20 @@ class Lookup(object):
         """Get the length of the IUPAC sequence"""
         return len(self._iupac)
 
+    def get_sequence(self, iupac=False):
+        """Get the sequence either in Illumina or IUPAC (iupac=True) format"""
+        if iupac:
+            return self._iupac
+        else:
+            return self._sequence
+
     #   Search the IUPAC codes for an alternate allele of a SNP
     def get_alternate(self, reference):
         """Get the alternate allele given an IUPAC code and reference allele"""
         ref = re.compile(u'(%s)' % reference) # Regex to ensure that our found reference allele is covered by the IUPAC code
         alt = re.compile(u'([^%s])' % reference) # Regex to find the alternate allele
-        if ref.search(self._IUPAC_CODES[self._code]): # If our reference allele is plausible given our IUPCA code
-            alternate = alt.search(self._IUPAC_CODES[self._code]).group() # Get the alternate
+        if ref.search(self.IUPAC_CODES[self._code]): # If our reference allele is plausible given our IUPCA code
+            alternate = alt.search(self.IUPAC_CODES[self._code]).group() # Get the alternate
             return alternate
         else: # Otherwise, give an 'N'
             return 'N'

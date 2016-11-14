@@ -6,8 +6,6 @@ if sys.version_info.major is not 3:
     sys.exit("Please use Python 3 for this module: " + __name__)
 
 
-from itertools import repeat
-
 from Utilities.utilities import rank_remove
 from . import snp
 
@@ -152,6 +150,7 @@ class Hsp(object):
         """Did the query align to the forward (False) or reverse (True) strand"""
         return self._hstrand == -1
 
+    @overload
     def get_snp_position(self, query_snp, expected):
         """Calculate the SNP position relative to reference"""
         try: # Type checking
@@ -164,9 +163,10 @@ class Hsp(object):
             raise ValueError
         #   If we don't find the SNP in this hsp
         if self._query.find(query_snp) is -1:
+            print('noquery', self, file=sys.stderr)
             raise NoSNPError # Error out
         #   If the hsp sequence is less than our expected value
-        elif len(self._query) < expected or (self._query.find(query_snp) < expected and self._query.count(query_snp) == 1):
+        elif (len(self._query) < expected) or (self._query.find(query_snp) <= expected and self._query.count(query_snp) == 1):
             #   Do some guesswork as to where the SNP is
             self._snp_pos = self._query.find(query_snp)
             if self.get_rc():
@@ -182,8 +182,9 @@ class Hsp(object):
             #   While we haven't found our query SNP
             while qsubstr[-1] != query_snp:
                 old = self._snp_pos # Old position
-                self._snp_pos = expected + qsubstr.count('-') # Add on any indels to our position
+                self._snp_pos = expected + qsubstr.count('-') # Add any deletions to our position
                 if old is self._snp_pos: # If we didn't change our position guess
+                    print("loop error", self, file=sys.stderr)
                     raise NoSNPError # Error out
                 qsubstr = self._query[:self._snp_pos + 1] # Replace our substring
             #   Calculate insertions
@@ -194,6 +195,38 @@ class Hsp(object):
             else:
                 return self._start + self._snp_pos - insertion
 
+    @get_snp_position.add
+    def get_snp_position(self, lookup):
+        """Calculate the SNP position relative to reference"""
+        try:
+            assert isinstance(lookup, snp.Lookup)
+        except AssertionError:
+            raise TypeError
+        try:
+            assert lookup.get_snpid() == self._name
+        except AssertionError:
+            raise ValueError
+        iupac = lookup.get_sequence(iupac=True).upper()
+        query = self._query.replace('-', '').upper()
+        if self._alength >= lookup.get_length() or iupac.find(query) is 0:
+            return self.get_snp_position(
+                query_snp=lookup.get_code(),
+                expected=lookup.get_forward_position()
+            )
+        elif self._alength < lookup.get_length():
+            expected = iupac.find(lookup.get_code(), lookup.get_forward_position())
+            aligned = iupac.find(query)
+            if expected > aligned:
+                adj = expected - aligned
+            elif expected < aligned:
+                adj = lookup.get_forward_position() + (aligned - expected) + query.find(lookup.get_code())
+            return self.get_snp_position(
+                query_snp=lookup.get_code(),
+                expected=adj
+            )
+        else:
+            raise ValueError("Something happened...")
+
     @overload
     def get_subject_allele(self):
         """Get the reference allele"""
@@ -203,6 +236,7 @@ class Hsp(object):
             assert ref.upper() in 'ACGTN'
             return ref
         except AssertionError:
+            print('noref', self, file=sys.stderr)
             raise NoSNPError
 
     @get_subject_allele.add
@@ -218,6 +252,7 @@ class Hsp(object):
             assert isinstance(this_snp, snp.SNP)
         except AssertionError:
             raise TypeError
+        print('SNP!', self, file=sys.stderr)
         self._snp = this_snp
 
     @add_snp.add
@@ -234,11 +269,13 @@ class Hsp(object):
         except AssertionError:
             raise ValueError
         except:
+            print('hmm', self, file=sys.stderr)
             raise
 
     def get_snp(self):
         """Return the SNP associated with this Hsp"""
         if not self._snp:
+            print('dafuq', self, file=sys.stderr)
             raise NoSNPError
         return self._snp
 
@@ -265,8 +302,8 @@ def parse_hsp(hsp):
     #   Ensure that our HSP has at least one mismatch
     if hsp.findChild('Hsp_midline').text.count(' ') < 1:
         raise NoSNPError
-    hsp_vals = map(get_value, repeat(hsp, len(VALS)), VALS)
-    return tuple(hsp_vals)
+    hsp_vals = (get_value(tag=hsp, value=val) for val in VALS)
+    return hsp_vals
 
 
 #   A function to parse the Hit section of a BLAST XML file
@@ -307,7 +344,7 @@ def parse_hit(snpid, hit):
     if hsps:
         return hsps
     else:
-        return False
+        return None
 
 
 #   A function to rank HSPs

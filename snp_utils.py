@@ -65,14 +65,17 @@ def blast_based(args, lookup_dict):
         blast_soup = BeautifulSoup(blast_xml, 'xml')
     except FeatureNotFound:
         sys.exit("Please install 'lxml' to properly parse the BLAST results")
+    #   Holding collections
     no_hits = set() # A set to hold no hits
     snp_list = [] # A list to hold all SNPs found
     hsps = [] # A list of HSPs from the XML file
+    #   Get reference genome information for filtering
     ref_gen = blast.get_value(tag=blast_soup, value='BlastOutput_db')
     bconf['database'] = ref_gen
-    if not ref_gen:
-        ref_gen = REFERENCE_DEFAULT
-        bconf = None
+    if not ref_gen: # If our referenge genome is None
+        ref_gen = REFERENCE_DEFAULT # Give it a default value
+        bconf = None # Make bconf a NoneType for filtering functions
+    #   Start parsing queries from the BLAST XML file
     for query in blast_soup.findAll('Iteration'):
         snpid = blast.get_value(tag=query, value='Iteration_query-def')
         #   Ask if no hits were found
@@ -86,19 +89,30 @@ def blast_based(args, lookup_dict):
         #   For every hit found
         for hit in query.findAll('Hit'):
             hit_num = blast.get_value(tag=hit, value='Hit_num')
-            this_hsps = blast.parse_hit(snpid=snpid, hit=hit)
-            try:
+            this_hsps = blast.parse_hit(snpid=snpid, hit=hit) # Parse the HSPs from this Hit
+            try: # blast.parse_hit() returns a list or a None
                 hsps += this_hsps
-            except TypeError:
+            except TypeError: # If this_hsps is a None
                 print('No HSPs for', snpid, 'hit number:', hit_num, file=sys.stderr)
-                no_hits.add(snpid)
+                no_hits.add(snpid) # Log as a failure
+    #   For the parsed HSPs
     for hsp in hsps:
+        #   Get the name of the SNP and corresponding Lookup information
         snpid = hsp.get_name()
         lookup = lookup_dict[snpid]
-        try:
+        try: # Try to make a SNP out of this HSP
             hsp.add_snp(lookup=lookup)
-        except (NoSNPError, NotABaseError, NoMatchError):
+        #   If no SNP, log and remove
+        except NoSNPError:
             print('No SNP for', hsp, file=sys.stderr)
+            no_hits.add(snpid)
+            hsps.remove(hsp)
+        except NotABaseError:
+            print('We captured something weird for SNP', hsp, file=sys.stderr)
+            no_hits.add(snpid)
+            hsps.remove(hsp)
+        except NoMatchError:
+            print('The lookup provided does not match with SNP', hsp, file=sys.stderr)
             no_hits.add(snpid)
             hsps.remove(hsp)
     #   Close the XML file
@@ -107,7 +121,15 @@ def blast_based(args, lookup_dict):
     if 'rank' in args.keys():
         final_hsps = blast.rank_hsps(hsps=hsps)
     else:
-        final_hsps = {h.get_name() : h for h in hsps}
+        # final_hsps = {h.get_name() : h for h in hsps}
+        #   Sort HSPs by SNP ID in a dictionary
+        final_hsps = dict()
+        for h in hsps:
+            if h.get_name() in final_hsps:
+                final_hsps[h.get_name()].append(h)
+            else:
+                final_hsps[h.get_name()] = [h]
+    #   Get the SNPs from our HSP dictionary
     for hsps in final_hsps.values():
         for hsp in hsps:
             try:
@@ -115,6 +137,7 @@ def blast_based(args, lookup_dict):
             except NoSNPError:
                 print('No SNP for', hsp, file=sys.stderr)
                 no_hits.add(hsp.get_name())
+    #   Clean out false failures from no_hits
     hit_snps = {s.get_snpid() for s in snp_list}
     no_hits -= hit_snps
     return(snp_list, no_hits, ref_gen, bconf)

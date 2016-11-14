@@ -98,6 +98,15 @@ class INFO(object):
         return self._description
 
 
+#   A function to suppress errors
+def no_error(func, errval=None, *args, **kwargs):
+    """Run a function and suppress error messages"""
+    try:
+        return func(*args, **kwargs)
+    except:
+        return errval
+
+
 #   A function to remove duplicates from a list
 def deduplicate_list(with_dups, key):
     """Deduplicate a list, or tuple given a list, set, or tuple of values that should not be in the first list
