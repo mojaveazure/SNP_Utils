@@ -95,7 +95,7 @@ def run_blastn(query, subject, evalue, max_hits, max_hsps, identity, keep_query)
         out=blast_out
     )
     #   Run BLASTn
-    oufile = run_blastn(cline=blastn, keep_query=keep_query)
+    outfile = run_blastn(cline=blastn, keep_query=keep_query)
     return outfile
 
 
