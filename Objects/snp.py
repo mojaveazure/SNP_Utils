@@ -382,7 +382,7 @@ class Lookup(object):
         return len(self._iupac)
 
     def get_sequence(self, iupac=False):
-        """Get the sequence either in Illumina or IUPAC (iupac=True) format"""
+        """Get the sequence in either Illumina or IUPAC (iupac=True) format"""
         if iupac:
             return self._iupac
         else:
