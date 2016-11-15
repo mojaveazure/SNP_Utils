@@ -510,7 +510,7 @@ def read_map(mapfile):
     map_dict = dict()
     try:
         with open(mapfile, 'r') as mf:
-            print("Using genetic map ", mapfile, file=sys.stderr)
+            print("Using genetic map", mapfile, file=sys.stderr)
             for line in mf:
                 split = line.strip().split()
                 m = Map(
