@@ -72,12 +72,12 @@ class INFO(object):
 
     def __call__(self):
         """Format the VCF ##INFO declaration for printing"""
-        vals = [ # Assemble the meat of the INFO declaration
+        vals = ( # Assemble the meat of the INFO declaration
             'ID=' + self._infoid,
             'Number=' + self._number,
             'Type=' + self._type,
             'Description="' + self._description + '"'
-        ]
+        )
         info = '##INFO=<' + ','.join(vals) + '>' # Create the full declaration
         return info
 
