@@ -43,7 +43,7 @@ class SNP(object):
         """Get the reverse complement of a nucleotide sequence"""
         forward = 'ACGTNacgtn'
         reverse = 'TGCANtgcan'
-        try:
+        try: # Type checking
             assert isinstance(sequence, (str, list, tuple))
             if isinstance(sequence, (list, tuple)):
                 for base in sequence:
