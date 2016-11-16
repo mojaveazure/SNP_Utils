@@ -69,6 +69,7 @@ def blast_based(args, lookup_dict):
     no_hits = set() # A set to hold no hits
     snp_list = [] # A list to hold all SNPs found
     hsps = [] # A list of HSPs from the XML file
+    with_snps = [] # A list of HSPs with SNPs
     #   Get reference genome information for filtering
     ref_gen = blast.get_value(tag=blast_soup, value='BlastOutput_db')
     bconf['database'] = ref_gen
@@ -99,29 +100,30 @@ def blast_based(args, lookup_dict):
         lookup = lookup_dict[snpid]
         try: # Try to make a SNP out of this HSP
             hsp.add_snp(lookup=lookup)
+            with_snps.append(hsp)
         #   If no SNP, log and remove
-        except NoSNPError:
-            print('No SNP for', hsp, file=sys.stderr)
+        except NoSNPError as nosnp:
+            print(nosnp.message, file=sys.stderr)
             no_hits.add(snpid)
-            hsps.remove(hsp)
+            # hsps.remove(hsp)
         except NotABaseError:
             print('We captured something weird for SNP', hsp, file=sys.stderr)
             no_hits.add(snpid)
-            hsps.remove(hsp)
+            # hsps.remove(hsp)
         except NoMatchError:
             print('The lookup provided does not match with SNP', hsp, file=sys.stderr)
             no_hits.add(snpid)
-            hsps.remove(hsp)
+            # hsps.remove(hsp)
     #   Close the XML file
     blast_xml.close()
     #   Rank, if asked for
     if 'rank' in args.keys():
-        final_hsps = blast.rank_hsps(hsps=hsps)
+        final_hsps = blast.rank_hsps(hsps=with_snps)
     else:
         # final_hsps = {h.get_name() : h for h in hsps}
         #   Sort HSPs by SNP ID in a dictionary
         final_hsps = dict()
-        for h in hsps:
+        for h in with_snps:
             if h.get_name() in final_hsps:
                 final_hsps[h.get_name()].append(h)
             else:
@@ -131,8 +133,8 @@ def blast_based(args, lookup_dict):
         for hsp in hsps:
             try:
                 snp_list.append(hsp.get_snp())
-            except NoSNPError:
-                print('No SNP for', hsp, file=sys.stderr)
+            except NoSNPError as nosnp:
+                print(nosnp.message, file=sys.stderr)
                 no_hits.add(hsp.get_name())
     #   Clean out false failures from no_hits
     hit_snps = {s.get_snpid() for s in snp_list}
