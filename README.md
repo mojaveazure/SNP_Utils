@@ -51,6 +51,7 @@ The `BLAST` subroutine is used to run and parse BLAST results to create a VCF fi
  - Choosing either a BLAST config or XML file as input
  - Setting the basename for the output
  - Choosing whether or not we rank SNPs
+ - Setting filtering schemes to eliminate duplicate SNPs
 
 ## `SAM`
 
@@ -58,6 +59,14 @@ The `SAM` subroutine is used to parse a SAM file designed around the Illumina lo
 
  - Choosing the SAM file and reference genome in FASTA format
  - Setting the basename for the output
+ - Setting filtering schemes to eliminate duplicate SNPs
+
+## Filtering Final VCF
+
+SNP\_Utils can filter found SNPs in an attempt to remove duplicate positions. Filtering works with both `BLAST` and `SAM` subroutines. The following filtering schemes are available:
+ - Use a genetic map to keeps SNPs on the chromosome specified by the map. Use `-b | --by-chrom` and `-m | --genetic-map` to filter by chromosome
+ - Set a minimum distance threshold in base pairs and keep the leftmost SNP when two are closer than this threshold. Use `-t | --threshold` to specify this distance in base pairs
+ - Use genetic map distances to choose the SNP closest to this position proportionally. This option ignores SNPs on other chromosomes. Please note that if using the `BLAST` subroutine, this filtering scheme requires that a reference sequence be used instead of a BLAST database or that the BLAST database was generated with the `-parse_seqids` flag toggled. Use `-d | --by-distance` and `-m | --genetic-map` to filter by genetic map distance
 
 ## Outputs
 
