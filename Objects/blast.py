@@ -254,7 +254,6 @@ class Hsp(object):
             assert isinstance(this_snp, snp.SNP)
         except AssertionError:
             raise TypeError
-        print('SNP!', self, file=sys.stderr)
         self._snp = this_snp
 
     @add_snp.add
