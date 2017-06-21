@@ -23,6 +23,7 @@ except ImportError as error:
     sys.exit("Please make sure you are in the 'SNP_Utils' directory to load custom modules:" + error.name)
 
 
+from distutils import spawn
 from os.path import basename
 
 try:
@@ -256,6 +257,8 @@ def main():
         #   Find SNPs given our method of BLAST or SAM
         if args['method'] == 'BLAST':
             method = 'BLAST'
+            if not spawn.find_executable('blastn'):
+                sys.exit("Please install BLASTn from NCBI")
             snp_list, no_snps, ref_gen, bconf = blast_based(args, lookup_dict)
             vcf_info.append(INFO(infoid='B', number=0, infotype='Flag', description='Variant Calculated from BLAST'))
         elif args['method'] == 'SAM':
